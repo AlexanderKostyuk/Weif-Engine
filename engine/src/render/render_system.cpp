@@ -1,7 +1,11 @@
 #include "render/render_system.h"
 
 #include "stb_image.h"
+#if defined(__APPLE__)
+#include <OpenGL/gl.h>
+#else
 #include <GL/gl.h>
+#endif
 #include <GL/gl3w.h>
 #include <GL/glcorearb.h>
 #define GLFW_INCLUDE_NONE
