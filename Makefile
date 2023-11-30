@@ -1,39 +1,54 @@
-SHELL := pwsh
-.SHELLFLAGS := -Command
+ifeq ($(OS),Windows_NT)
+  TARGET_EXEC := demo.exe
+  PATH_SEPARATOR = \\
+  SRC_DIRS := .\\
+  SRCS := $(shell powershell gci -r -Path ${SRC_DIRS} -Include "*.cpp", "*.c" -Name)
+  INC_DIRS := $(shell powershell gci -r -Path ${SRC_DIRS} -Filter "*include" -Name)
+  LDFLAGS := -static -L.\engine\dependencies\lib -lglfw3 -lgdi32 -lopengl32 
+define CREATE_DIR
+	if not exist $(1) mkdir $(1)
+endef
+  CLEAN_DIR := rmdir /s /q $(BUILD_DIR)
+else
+  TARGET_EXEC := demo
+  PATH_SEPARATOR := /
+  SRC_DIRS := ./src ./engine ./include 
+  SRCS := $(shell find ${SRC_DIRS} -name '*.cpp' -or -name '*.c')
+  INC_DIRS := $(shell find $(SRC_DIRS) -type d)
+  LDFLAGS := -lglfw 
+define CREATE_DIR 
+	mkdir -p $(1)
+endef
+  CLEAN_DIR := rm -r $(BUILD_DIR)
+endif
 
-TARGET_EXEC := OpenGl.exe
 
-BUILD_DIR := .\build
-SRC_DIRS := .\
+BUILD_DIR := .$(PATH_SEPARATOR)build
 
-
-
-SRCS := $(shell powershell gci -r -Path ${SRC_DIRS} -Include "*.cpp", "*.c" -Name)
-
-OBJS := $(SRCS:%=$(BUILD_DIR)\\%.o)
+OBJS := $(SRCS:%=$(BUILD_DIR)$(PATH_SEPARATOR)%.o)
 DEPS := $(OBJS:.o=.d)
 
-INC_DIRS := $(shell powershell gci -r -Path ${SRC_DIRS} -Filter "*include" -Name)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
+CXX := g++
+CC := gcc
 CPPFLAGS := $(INC_FLAGS) -MMD -MP 
 CXXFLAGS := -std=c++17 -g3 -O2 -xc++
-LDFLAGS := -static -L.\engine\dependencies\lib -lglfw3 -lgdi32 -lopengl32 
 
-$(BUILD_DIR)\$(TARGET_EXEC): $(OBJS)
-	g++ $(OBJS) -o $@ $(LDFLAGS) 
+$(BUILD_DIR)$(PATH_SEPARATOR)$(TARGET_EXEC): $(OBJS)
+	$(CXX) $(OBJS) -o $@ $(LDFLAGS) 
 
-$(BUILD_DIR)\\%.cpp.o: %.cpp
-	if not exist $(dir $@) mkdir $(dir $@)
-	g++ $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+$(BUILD_DIR)$(PATH_SEPARATOR)%.cpp.o: %.cpp
+	$(call CREATE_DIR,$(dir $@))
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
-$(BUILD_DIR)\\%.c.o: %.c
-	if not exist $(dir $@) mkdir $(dir $@)
-	gcc $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+$(BUILD_DIR)$(PATH_SEPARATOR)%.c.o: %.c
+	$(call CREATE_DIR,$(dir $@))
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 .PHONY: run
-run: $(BUILD_DIR)\$(TARGET_EXEC)
-	$(BUILD_DIR)\$(TARGET_EXEC)
+run: $(BUILD_DIR)$(PATH_SEPARATOR)$(TARGET_EXEC)
+	$(BUILD_DIR)$(PATH_SEPARATOR)$(TARGET_EXEC)
 
 .PHONY: clean
 clean: 
@@ -44,5 +59,6 @@ debug:
 	echo $(INC_FLAGS)
 	echo $(SRCS)
 	echo $(OBJS)
+	echo $(OS)
 	
 -include $(DEPS)
