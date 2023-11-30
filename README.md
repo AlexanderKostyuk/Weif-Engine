@@ -2,6 +2,7 @@
 
 This is a self-study project for learning game engine creation process.
 
+
 ## Contents
 Engine uses glfw for window managment and OpenGL for rendering.
 
@@ -11,14 +12,38 @@ Engine uses glfw for window managment and OpenGL for rendering.
 ### Implemented
 - ECS for gameobject managment. 
 - Basic rendering system. 
-    - Lighting
-    - Texture loading
+    - Lighting.
+    - Texture loading.
 - Basic input system.
-- Mesh normals generation from vertices
-
+- Mesh normals generation from vertices.
 
 ## Requirements
 Right now project requires MinGW compiler, and compiles with Makefiles through mingw32-make. 
+
+- GCC 12+
+- GLFW3
+- Make
+
+### Windows
+You need to have [MinGW](https://winlibs.com/) and setted up %PATH% enviroment variable to MinGW binaries. 
+For GLFW linking you need to add [libglfw3.a](https://www.glfw.org/download.html) file to lib folder of MinGW.
+
+After setting up enviroment you can run command "mingw32-make run" to build and run project.
+
+### Ubuntu 
+Install GCC and Make with command:
+```
+sudo apt-get install build-essential
+```
+Install glfw libraries with command:
+```
+sudo apt-get install libglfw3
+```
+
+After installing all requirements run command in root folder.
+```
+make run
+```
 
 ## Make commands
 | Command | Result |
