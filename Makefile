@@ -15,7 +15,7 @@ else
   SRC_DIRS := ./src ./engine ./include 
   SRCS := $(shell find ${SRC_DIRS} -name '*.cpp' -or -name '*.c')
   INC_DIRS := $(shell find $(SRC_DIRS) -type d)
-  LDFLAGS := -static -L.\engine\dependencies\lib -lglfw3 
+  LDFLAGS := -static -L./engine/dependencies/lib -lglfw3 
 define CREATE_DIR 
 	mkdir -p $(1)
 endef
