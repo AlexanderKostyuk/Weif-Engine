@@ -4,7 +4,7 @@ ifeq ($(OS),Windows_NT)
   SRC_DIRS := .\\
   SRCS := $(shell powershell gci -r -Path ${SRC_DIRS} -Include "*.cpp", "*.c" -Name)
   INC_DIRS := $(shell powershell gci -r -Path ${SRC_DIRS} -Filter "*include" -Name)
-  LDFLAGS := -static -L.\engine\dependencies\lib -lglfw3 -lgdi32 -lopengl32 
+  LDFLAGS := -static -L.\engine\dependencies\lib -lglfw3 -lgdi32 
 define CREATE_DIR
 	if not exist $(1) mkdir $(1)
 endef
@@ -15,7 +15,7 @@ else
   SRC_DIRS := ./src ./engine ./include 
   SRCS := $(shell find ${SRC_DIRS} -name '*.cpp' -or -name '*.c')
   INC_DIRS := $(shell find $(SRC_DIRS) -type d)
-  LDFLAGS := -lglfw 
+  LDFLAGS := -static -L.\engine\dependencies\lib -lglfw3 
 define CREATE_DIR 
 	mkdir -p $(1)
 endef
