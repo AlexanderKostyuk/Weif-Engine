@@ -1,0 +1,4 @@
+-std=c++17
+-I.\include
+-I.\engine\include
+-I.\engine\dependencies\include
