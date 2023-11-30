@@ -7,5 +7,12 @@ Project contains test application which is located in src and include folders.
 Test application uses engine methods that provided in engine folder.
 
 ## Requirements
-Right now project requires MinGW compiler, and compiles with Makefiles through mingw32-make 
+Right now project requires MinGW compiler, and compiles with Makefiles through mingw32-make. 
+
+## Make commands
+| Command | Result |
+| ------- | ------ |
+| run | builds test application and runs it |
+| clean | deletes build folder |
+| debug | outputs found src, and include paths, also returns generated obj file paths |
 
