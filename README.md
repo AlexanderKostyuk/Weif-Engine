@@ -18,7 +18,6 @@ Engine uses glfw for window managment and OpenGL for rendering.
 - Mesh normals generation from vertices.
 
 ## Requirements
-Right now project requires MinGW compiler, and compiles with Makefiles through mingw32-make. 
 
 - GCC 12+
 - GLFW3
