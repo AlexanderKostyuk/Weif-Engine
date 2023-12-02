@@ -15,8 +15,8 @@ WE::Render::TextureId g_cube_albedo_texture;
 WE::Render::TextureId g_plane_albedo_texture;
 WE::Render::TextureId g_normal_texture;
 
-WE::Render::MeshId g_flat_cube_mesh;
-WE::Render::MeshId g_smooth_cube_mesh;
+WE::Render::MeshId g_cube_mesh;
+WE::Render::MeshId g_sphere_mesh;
 WE::Render::MeshId g_plane_mesh;
 
 void InitTextures() {
@@ -24,7 +24,7 @@ void InitTextures() {
 
   std::vector<std::vector<std::array<unsigned char, 4>>> albedo_texture{
       std::vector<std::array<unsigned char, 4>>{
-          std::array<unsigned char, 4>{0, 128, 0, 255}}};
+          std::array<unsigned char, 4>{255, 255, 255, 255}}};
   g_cube_albedo_texture = texture_manager.LoadTextureFromVector(albedo_texture);
 
   std::vector<std::vector<std::array<unsigned char, 4>>> plane_albedo_texture{
@@ -42,40 +42,9 @@ void InitTextures() {
 void InitModels() {
   auto &model_manager = application.GetModelManager();
 
-  std::vector<glm::vec3> cube_vertices{
-      glm::vec3(-0.5f, -0.5f, 0.5f),  glm::vec3(-0.5f, 0.5f, 0.5f),
-      glm::vec3(0.5f, 0.5f, 0.5f),    glm::vec3(0.5f, -0.5f, 0.5f),
-      glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-0.5f, 0.5f, -0.5f),
-      glm::vec3(0.5f, 0.5f, -0.5f),   glm::vec3(0.5f, -0.5f, -0.5f),
-  };
-  std::vector<glm::vec2> cube_uv{glm::vec2(0.0f, 0.0f), glm::vec2(1.0f, 0.0f),
-                                 glm::vec2(1.0f, 1.0f), glm::vec2(0.0f, 1.0f),
-                                 glm::vec2(0.0f, 0.0f), glm::vec2(1.0f, 0.0f),
-                                 glm::vec2(1.0f, 1.0f), glm::vec2(0.0f, 1.0f)};
-  std::vector<glm::uvec3> cube_indices{// front face
-                                       glm::uvec3(0, 1, 2), glm::uvec3(0, 2, 3),
-
-                                       // left face
-                                       glm::uvec3(5, 1, 0), glm::uvec3(5, 0, 4),
-
-                                       // rigth face
-                                       glm::uvec3(3, 2, 7), glm::uvec3(2, 6, 7),
-
-                                       // bottom face
-                                       glm::uvec3(0, 3, 7), glm::uvec3(0, 7, 4),
-
-                                       // top face
-                                       glm::uvec3(1, 5, 2), glm::uvec3(2, 5, 6),
-
-                                       // back face
-                                       glm::uvec3(7, 6, 5),
-                                       glm::uvec3(7, 5, 4)};
-  g_flat_cube_mesh =
-      model_manager.LoadModel(model_manager.GenerateModelFlatShading(
-          cube_vertices, cube_uv, cube_indices));
-  g_smooth_cube_mesh =
-      model_manager.LoadModel(model_manager.GenerateModelSmoothShading(
-          cube_vertices, cube_uv, cube_indices));
+  g_cube_mesh = model_manager.LoadModelsFromFile("./assets/models/cube.obj")[0];
+  g_sphere_mesh =
+      model_manager.LoadModelsFromFile("./assets/models/sphere.obj")[0];
 
   std::vector<glm::vec3> plane_vertices{
       glm::vec3(-0.5f, -0.5f, -0.5f),
@@ -83,6 +52,7 @@ void InitModels() {
       glm::vec3(0.5f, 0.5f, -0.5f),
       glm::vec3(0.5f, -0.5f, -0.5f),
   };
+
   std::vector<glm::vec2> plane_uv{glm::vec2(0.0f, 0.0f), glm::vec2(1.0f, 0.0f),
                                   glm::vec2(1.0f, 1.0f), glm::vec2(0.0f, 1.0f)};
   std::vector<glm::uvec3> plane_indices{glm::uvec3(0, 1, 2),
@@ -102,7 +72,7 @@ void InitEntities() {
   coordinator.AddComponent(cube, WE::ECS::Components::Transform{
                                      .position = glm::vec3(2.0f, 0.0f, -5.0f)});
   coordinator.AddComponent(
-      cube, WE::ECS::Components::MeshRenderer{.mesh_id = g_flat_cube_mesh});
+      cube, WE::ECS::Components::MeshRenderer{.mesh_id = g_cube_mesh});
   coordinator.AddComponent(cube, WE::ECS::Components::Material{
                                      .albedo_texture_id = g_cube_albedo_texture,
                                      .normal_texture_id = g_normal_texture});
@@ -111,8 +81,8 @@ void InitEntities() {
   coordinator.AddComponent(smooth_cube,
                            WE::ECS::Components::Transform{
                                .position = glm::vec3(-2.0f, 0.0f, -5.0f)});
-  coordinator.AddComponent(smooth_cube, WE::ECS::Components::MeshRenderer{
-                                            .mesh_id = g_smooth_cube_mesh});
+  coordinator.AddComponent(
+      smooth_cube, WE::ECS::Components::MeshRenderer{.mesh_id = g_sphere_mesh});
   coordinator.AddComponent(
       smooth_cube,
       WE::ECS::Components::Material{.albedo_texture_id = g_cube_albedo_texture,

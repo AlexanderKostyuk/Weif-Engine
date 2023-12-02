@@ -29,6 +29,8 @@ public:
     return meshes.at(mesh_id).indices_amount;
   }
 
+  std::vector<MeshId> LoadModelsFromFile(const char *file_path);
+
   Model GenerateModelFlatShading(std::vector<glm::vec3> &vertices,
                                  std::vector<glm::vec2> &uv,
                                  std::vector<glm::uvec3> &indices);

@@ -1,12 +1,19 @@
 #include "render/model_manager.h"
 
+#include "assimp/vector3.h"
+#include "render/model.h"
 #include "stdio.h"
 #include <GL/gl3w.h>
 #include <GL/glcorearb.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <cstdint>
 #include <glm/fwd.hpp>
 #include <glm/geometric.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <queue>
 
 namespace {
 void GenBuffers(WE::Render::Mesh &mesh) {
@@ -18,6 +25,37 @@ void DeleteBuffers(WE::Render::Mesh &mesh) {
   glDeleteBuffers(mesh.VBO.size(), mesh.VBO.data());
   glDeleteBuffers(1, &mesh.EBO);
   glDeleteVertexArrays(1, &mesh.VAO);
+}
+
+glm::vec3 AiVector3DToGLMVec3(const aiVector3D &vector) {
+  return glm::vec3(vector.x, vector.y, vector.z);
+}
+glm::vec2 AiVector3DToGLMvec2(const aiVector3D &vector) {
+  return glm::vec2(vector.x, vector.y);
+}
+glm::uvec3 AiFaceToGLMuvec3(const aiFace &face) {
+  return glm::uvec3(face.mIndices[2], face.mIndices[1], face.mIndices[0]);
+}
+
+WE::Render::Model GenerateModelFromAiMesh(const aiMesh *mesh) {
+  WE::Render::Model model{};
+  model.vertices.reserve(mesh->mNumVertices);
+  model.normals.reserve(mesh->mNumVertices);
+  model.uv.reserve(mesh->mNumVertices);
+  for (std::uint32_t index = 0; index < mesh->mNumVertices; index++) {
+    model.vertices.push_back(AiVector3DToGLMVec3(mesh->mVertices[index]));
+    model.normals.push_back(AiVector3DToGLMVec3(mesh->mNormals[index]));
+    if (mesh->mTextureCoords[0] != nullptr)
+      model.uv.push_back(AiVector3DToGLMvec2(mesh->mTextureCoords[0][index]));
+    else
+      model.uv.push_back(glm::uvec2(0.0f));
+  }
+  model.indices.reserve(mesh->mNumFaces);
+  for (std::uint32_t face_index = 0; face_index < mesh->mNumFaces;
+       face_index++) {
+    model.indices.push_back(AiFaceToGLMuvec3(mesh->mFaces[face_index]));
+  }
+  return model;
 }
 
 } // namespace
@@ -60,6 +98,38 @@ MeshId ModelManager::LoadModel(Model model) {
   return current_id;
 }
 
+std::vector<MeshId> ModelManager::LoadModelsFromFile(const char *file_path) {
+
+  std::vector<MeshId> mesh_ids{};
+
+  Assimp::Importer assimp_importer;
+  const aiScene *scene = assimp_importer.ReadFile(
+      file_path, aiProcess_Triangulate | aiProcess_FlipUVs);
+
+  if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
+      !scene->mRootNode) {
+    printf("Assimp error! %s\n", assimp_importer.GetErrorString());
+    return mesh_ids;
+  }
+
+  std::queue<aiNode *> nodes{};
+  nodes.push(scene->mRootNode);
+  while (!nodes.empty()) {
+
+    aiNode *node = nodes.front();
+    nodes.pop();
+
+    for (std::uint32_t index = 0; index < node->mNumMeshes; index++) {
+      mesh_ids.push_back(LoadModel(
+          GenerateModelFromAiMesh(scene->mMeshes[node->mMeshes[index]])));
+    }
+    for (std::uint32_t index = 0; index < node->mNumChildren; index++) {
+      nodes.push(node->mChildren[index]);
+    }
+  }
+  return mesh_ids;
+}
+
 void ModelManager::UnloadModel(MeshId mesh_id) {
   DeleteBuffers(meshes[mesh_id]);
   meshes.erase(mesh_id);
@@ -70,24 +140,6 @@ Model ModelManager::GenerateModelFlatShading(std::vector<glm::vec3> &vertices,
                                              std::vector<glm::uvec3> &indices) {
 
   std::vector<glm::vec3> normals(indices.size() * 3, glm::vec3(0.0f));
-
-  // for (int i = 0; i < indices.size(); i++) {
-  //   auto face_indices = indices[i];
-  //   glm::vec3 normal =
-  //       glm::cross(vertices[face_indices.z] - vertices[face_indices.y],
-  //                  vertices[face_indices.y] - vertices[face_indices.x]);
-  //   normals[face_indices.x] += normal;
-  //   normals[face_indices.y] += normal;
-  //   normals[face_indices.z] += normal;
-  // }
-  //
-  // for (int i = 0; i < normals.size(); i++) {
-  //   normals[i] = glm::normalize(normals[i]);
-  // }
-  //
-  // return Model{
-  //     .vertices = vertices, .normals = normals, .uv = uv, .indices =
-  //     indices};
 
   std::vector<glm::vec3> new_vertices(indices.size() * 3, glm::vec3(0.0f));
   std::vector<glm::vec2> new_uv(indices.size() * 3, glm::vec2(0.0f));

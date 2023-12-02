@@ -22,11 +22,13 @@ Right now project requires MinGW compiler, and compiles with Makefiles through m
 
 - GCC 12+
 - GLFW3
+- Assimp
 - Make
 
 ### Windows
 You need to have [MinGW](https://winlibs.com/) and setted up %PATH% enviroment variable to MinGW binaries. 
 For GLFW linking you need to add [libglfw3.a](https://www.glfw.org/download.html) file to lib folder of MinGW.
+For Assimp linking you need to add [libassimp.a](https://github.com/assimp/assimp) file to lib folder of MinGW.
 
 After setting up enviroment you can run command "mingw32-make run" to build and run project.
 
@@ -38,6 +40,10 @@ sudo apt-get install build-essential
 Install glfw libraries with command:
 ```
 sudo apt-get install libglfw3
+```
+Install assimp libraries with command:
+```
+sudo apt-get install libassimp-dev
 ```
 
 After installing all requirements run command in root folder.

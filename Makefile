@@ -1,11 +1,11 @@
-LDFLAGS := -static -lglfw3 
+LDFLAGS := -static -lglfw3 -lassimp -lzlib 
 ifeq ($(OS),Windows_NT)
   TARGET_EXEC := demo.exe
   PATH_SEPARATOR = \\
   SRC_DIRS := .\\
   SRCS := $(shell powershell gci -r -Path ${SRC_DIRS} -Include "*.cpp", "*.c" -Name)
   INC_DIRS := $(shell powershell gci -r -Path ${SRC_DIRS} -Filter "*include" -Name)
-  LDFLAGS += -lgdi32 
+  LDFLAGS += -lgdi32
 define CREATE_DIR
 	if not exist $(1) mkdir $(1)
 endef
