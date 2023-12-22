@@ -1,3 +1,4 @@
+#include "ECS/components/directional_light.h"
 #define GLFW_DLL
 #include <glm/fwd.hpp>
 #include <vector>
@@ -8,36 +9,14 @@
 #include "application.h"
 #include "camera_control_system.h"
 #include "render/model_manager.h"
-#include "render/texture_manager.h"
 
 WE::Application application;
-WE::Render::TextureId g_cube_albedo_texture;
-WE::Render::TextureId g_plane_albedo_texture;
-WE::Render::TextureId g_normal_texture;
 
 WE::Render::MeshId g_cube_mesh;
 WE::Render::MeshId g_sphere_mesh;
 WE::Render::MeshId g_plane_mesh;
 
-void InitTextures() {
-  auto &texture_manager = application.GetTextureManager();
-
-  std::vector<std::vector<std::array<unsigned char, 4>>> albedo_texture{
-      std::vector<std::array<unsigned char, 4>>{
-          std::array<unsigned char, 4>{255, 255, 255, 255}}};
-  g_cube_albedo_texture = texture_manager.LoadTextureFromVector(albedo_texture);
-
-  std::vector<std::vector<std::array<unsigned char, 4>>> plane_albedo_texture{
-      std::vector<std::array<unsigned char, 4>>{
-          std::array<unsigned char, 4>{192, 192, 192, 255}}};
-  g_plane_albedo_texture =
-      texture_manager.LoadTextureFromVector(plane_albedo_texture);
-
-  std::vector<std::vector<std::array<unsigned char, 4>>> normal_texture{
-      std::vector<std::array<unsigned char, 4>>{
-          std::array<unsigned char, 4>{128, 128, 255, 255}}};
-  g_normal_texture = texture_manager.LoadTextureFromVector(normal_texture);
-}
+void InitTextures() {}
 
 void InitModels() {
   auto &model_manager = application.GetModelManager();
@@ -73,9 +52,7 @@ void InitEntities() {
                                      .position = glm::vec3(2.0f, 0.0f, -5.0f)});
   coordinator.AddComponent(
       cube, WE::ECS::Components::MeshRenderer{.mesh_id = g_cube_mesh});
-  coordinator.AddComponent(cube, WE::ECS::Components::Material{
-                                     .albedo_texture_id = g_cube_albedo_texture,
-                                     .normal_texture_id = g_normal_texture});
+  coordinator.AddComponent(cube, WE::ECS::Components::Material{});
 
   auto smooth_cube = coordinator.CreateEntity();
   coordinator.AddComponent(smooth_cube,
@@ -83,10 +60,7 @@ void InitEntities() {
                                .position = glm::vec3(-2.0f, 0.0f, -5.0f)});
   coordinator.AddComponent(
       smooth_cube, WE::ECS::Components::MeshRenderer{.mesh_id = g_sphere_mesh});
-  coordinator.AddComponent(
-      smooth_cube,
-      WE::ECS::Components::Material{.albedo_texture_id = g_cube_albedo_texture,
-                                    .normal_texture_id = g_normal_texture});
+  coordinator.AddComponent(smooth_cube, WE::ECS::Components::Material{});
 
   auto plane = coordinator.CreateEntity();
   coordinator.AddComponent(plane,
@@ -96,10 +70,15 @@ void InitEntities() {
                                .rotation = glm::vec3(-1.556f, 0.0f, 0.0f)});
   coordinator.AddComponent(
       plane, WE::ECS::Components::MeshRenderer{.mesh_id = g_plane_mesh});
-  coordinator.AddComponent(
-      plane,
-      WE::ECS::Components::Material{.albedo_texture_id = g_plane_albedo_texture,
-                                    .normal_texture_id = g_normal_texture});
+  coordinator.AddComponent(plane, WE::ECS::Components::Material{});
+
+  auto dir_light = coordinator.CreateEntity();
+  coordinator.AddComponent(dir_light,
+                           WE::ECS::Components::DirectionalLight{
+                               .direction = glm::vec3(0.0f, -1.0f, 1.0f),
+                               .ambient = glm::vec3(0.1f, 0.1f, 0.1f),
+                               .diffuse = glm::vec3(0.1f, 0.1f, 0.1f),
+                               .specular = glm::vec3(0.3f, 0.2f, 0.1f)});
 }
 
 int main() {

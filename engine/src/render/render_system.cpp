@@ -1,6 +1,10 @@
 #include "render/render_system.h"
 
+#include "ECS/components/directional_light.h"
 #include "stb_image.h"
+#include <cmath>
+#include <cstddef>
+#include <vector>
 #if defined(__APPLE__)
 #include <OpenGL/gl.h>
 #else
@@ -32,8 +36,14 @@ namespace {
 const GLuint kProjectionUniformBlockIndex = 0;
 
 const GLuint kModelCameraUniformLocation = 1;
-const GLuint kCameraSpaceLightPositionUniformLocation = 128;
-const GLuint kModelCameraNormalUniformLocation = 129;
+const GLuint kModelCameraNormalUniformLocation = 2;
+
+const GLuint kDirectionalLightDirection = 128;
+const GLuint kDirectionalLightAmbient = 129;
+const GLuint kDirectionalLightDiffuse = 130;
+const GLuint kDirectionalLightSpecular = 131;
+const GLuint kDirectionalLightExists = 132;
+const GLuint kShininess = 133;
 
 } // namespace
 
@@ -52,18 +62,19 @@ RenderSystem::RenderSystem() {
 
   stbi_set_flip_vertically_on_load(true);
 
-  light_position_ = glm::vec4(0.0f, 0.0f, -3.0f, 1.0f);
-
   GenerateGlobalUBO();
   GenerateProgram();
 }
 
 void RenderSystem::GenerateProgram() {
+  printf("Generating Program...\n");
   base_program_ =
       Program("./engine/shaders/shader.vert", "./engine/shaders/gaussian.frag");
+  printf("Program Generated\n");
 }
 
 void RenderSystem::GenerateGlobalUBO() {
+  printf("Generating Global UBO...\n");
   glGenBuffers(1, &projection_global_UBO_);
   glBindBuffer(GL_UNIFORM_BUFFER, projection_global_UBO_);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), nullptr, GL_STREAM_DRAW);
@@ -77,6 +88,7 @@ void RenderSystem::GenerateGlobalUBO() {
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
   glBindBufferRange(GL_UNIFORM_BUFFER, kProjectionUniformBlockIndex,
                     projection_global_UBO_, 0, sizeof(glm::mat4) * 2);
+  printf("Global UBO Generated\n");
 }
 
 void RenderSystem::UpdatePerspectiveMatrix() {
@@ -115,9 +127,11 @@ void RenderSystem::Draw() {
   glClearDepth(1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glm::mat4 camera_matrix = GetCameraMatrix();
-
   auto &coordinator = GetApplication()->GetCoordinator();
 
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D,
+                GetApplication()->GetTextureManager().GetGaussianTermTexture());
   base_program_.UseProgram();
   auto entities =
       coordinator
@@ -142,6 +156,19 @@ void RenderSystem::Draw() {
   glfwSwapBuffers(GetApplication()->GetWindow());
 }
 
+void RenderSystem::BindDirectionalLight(
+    ECS::Components::DirectionalLight &directional_light) {
+  glm::vec3 direction =
+      glm::mat3(GetCameraMatrix()) * directional_light.direction;
+  glUniform3fv(kDirectionalLightDirection, 1, glm::value_ptr(direction));
+  glUniform3fv(kDirectionalLightAmbient, 1,
+               glm::value_ptr(directional_light.ambient));
+  glUniform3fv(kDirectionalLightDiffuse, 1,
+               glm::value_ptr(directional_light.diffuse));
+  glUniform3fv(kDirectionalLightSpecular, 1,
+               glm::value_ptr(directional_light.specular));
+}
+
 void RenderSystem::BindUniforms(ECS::Components::Transform &transform,
                                 glm::mat4 &camera_matrix) {
 
@@ -152,24 +179,29 @@ void RenderSystem::BindUniforms(ECS::Components::Transform &transform,
 
   glm::mat3 model_camera_normal_matrix =
       glm::transpose(glm::inverse(glm::mat3(model_camera_matrix)));
-  glm::vec4 camera_space_light_position = camera_matrix * light_position_;
 
   glUniformMatrix4fv(kModelCameraUniformLocation, 1, GL_FALSE,
                      glm::value_ptr(model_camera_matrix));
   glUniformMatrix3fv(kModelCameraNormalUniformLocation, 1, GL_FALSE,
                      glm::value_ptr(model_camera_normal_matrix));
-  glUniform3fv(kCameraSpaceLightPositionUniformLocation, 1,
-               glm::value_ptr(camera_space_light_position));
 }
 
 void RenderSystem::BindTextures(ECS::Components::Material &material) {
 
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, GetApplication()->GetTextureManager().GetTexture(
-                                   material.albedo_texture_id));
+  auto &texture_manager = GetApplication()->GetTextureManager();
+  GLuint diffuse_texture =
+      material.diffuse_texture_id == 0
+          ? texture_manager.GetDefaultDiffuseTexture()
+          : texture_manager.GetTexture(material.diffuse_texture_id);
+  GLuint specular_texture =
+      material.specular_texture_id == 0
+          ? texture_manager.GetDefaultSpecularTexture()
+          : texture_manager.GetTexture(material.specular_texture_id);
   glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, GetApplication()->GetTextureManager().GetTexture(
-                                   material.normal_texture_id));
+  glBindTexture(GL_TEXTURE_2D, diffuse_texture);
+
+  glActiveTexture(GL_TEXTURE2);
+  glBindTexture(GL_TEXTURE_2D, specular_texture);
 }
 
 void RenderSystem::DrawMesh(MeshId mesh_id) {

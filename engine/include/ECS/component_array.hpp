@@ -43,6 +43,10 @@ public:
     return component_array[entity_to_index_map.at(entity)];
   }
 
+  inline T &GetDataByIndex(std::size_t index) { return component_array[index]; }
+
+  inline std::size_t GetComponentsAmount() { return size; }
+
   void EntityDestroyed(Entity entity) override {
     if (entity_to_index_map.find(entity) != entity_to_index_map.end()) {
       RemoveData(entity);

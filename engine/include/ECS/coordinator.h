@@ -48,6 +48,14 @@ public:
     return component_manager->GetComponent<T>(entity);
   }
 
+  template <typename T> inline T &GetComponentByIndex(std::size_t index) {
+    return component_manager->GetComponentByIndex<T>(index);
+  }
+
+  template <typename T> inline std::size_t GetComponentsAmount() {
+    return component_manager->GetComponentsAmount<T>();
+  }
+
   template <typename T> inline ComponentType GetComponentType() {
     return component_manager->GetComponentType<T>();
   }

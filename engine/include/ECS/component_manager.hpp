@@ -48,6 +48,14 @@ public:
     return GetComponentArray<T>()->GetData(entity);
   }
 
+  template <typename T> T &GetComponentByIndex(std::size_t index) {
+    return GetComponentArray<T>()->GetDataByIndex(index);
+  }
+
+  template <typename T> std::size_t GetComponentsAmount() {
+    return GetComponentArray<T>()->GetComponentsAmount();
+  }
+
   void EntityDestroyed(Entity entity) {
     for (auto const &pair : component_arrays) {
       auto const &component = pair.second;
@@ -64,7 +72,7 @@ private:
   template <typename T> std::shared_ptr<ComponentArray<T>> GetComponentArray() {
     const char *typeName = typeid(T).name();
     return std::static_pointer_cast<ComponentArray<T>>(
-        component_arrays[typeName]);
+        component_arrays.at(typeName));
   }
 };
 

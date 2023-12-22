@@ -7,8 +7,9 @@ namespace WE::ECS::Components {
 
 struct Material {
 
-  Render::TextureId albedo_texture_id;
-  Render::TextureId normal_texture_id;
+  Render::TextureId diffuse_texture_id = 0;
+  Render::TextureId specular_texture_id = 0;
+  float shininess;
 };
 
 } // namespace WE::ECS::Components

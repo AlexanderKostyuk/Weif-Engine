@@ -1,4 +1,5 @@
 #include "application.h"
+#include "ECS/components/directional_light.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -83,6 +84,7 @@ void Application::Init() {
 }
 
 void Application::InitWindow() {
+  printf("Initializing Window...\n");
 
   glfwInit();
   glfwSetErrorCallback(glfwErrorCallback);
@@ -105,17 +107,31 @@ void Application::InitWindow() {
   glfwSetMouseButtonCallback(window_, glfwMouseButtonCallback);
   glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
   gl3wInit();
+  texture_manager_.Init();
+  printf("Window intialized\n");
 }
 
 void Application::InitComponents() {
+  printf("Initializing components...\n");
   coordinator_.RegisterComponent<ECS::Components::Transform>();
   coordinator_.RegisterComponent<ECS::Components::MeshRenderer>();
   coordinator_.RegisterComponent<ECS::Components::Material>();
+  coordinator_.RegisterComponent<ECS::Components::DirectionalLight>();
+  printf("Components intialized\n");
 }
 
 void Application::InitSystems() {
+  printf("Initializing systems...\n");
+  ECS::Signature render_signature;
+  render_signature.set(
+      coordinator_.GetComponentType<ECS::Components::Transform>());
+  render_signature.set(
+      coordinator_.GetComponentType<ECS::Components::MeshRenderer>());
+  render_signature.set(
+      coordinator_.GetComponentType<ECS::Components::Material>());
   render_system_ = coordinator_.RegisterSystem<Render::RenderSystem>(this);
   render_system_->SetViewportSize(window_width_, window_height_);
+  printf("Systems initialized\n");
 }
 
 void Application::Loop() {

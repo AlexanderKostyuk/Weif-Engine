@@ -7,7 +7,7 @@ This is a self-study project for learning game engine creation process.
 Engine uses glfw for window managment and OpenGL for rendering.
 
 ### Demo
-![](https://github.com/WoINBoBrA/Weif-Engine/blob/main/gifs/demo.gif)
+![](https://github.com/AlexanderKostyuk/Weif-Engine/blob/main/gifs/demo.gif)
 
 ### Implemented
 - ECS for gameobject managment. 

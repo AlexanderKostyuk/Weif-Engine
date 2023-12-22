@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "ECS/components/directional_light.h"
 #include "ECS/components/material.h"
 #include "ECS/components/transform.h"
 #include "ECS/i_system.h"
@@ -21,6 +22,8 @@ private:
   void UpdatePerspectiveMatrix();
   void Draw();
   void DrawMesh(MeshId mesh_id);
+  void
+  BindDirectionalLight(ECS::Components::DirectionalLight &directional_light);
   void BindUniforms(ECS::Components::Transform &transform,
                     glm::mat4 &camera_matrix);
   void BindTextures(ECS::Components::Material &material);
