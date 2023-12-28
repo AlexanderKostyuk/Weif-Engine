@@ -76,9 +76,9 @@ void InitEntities() {
   coordinator.AddComponent(dir_light,
                            WE::ECS::Components::DirectionalLight{
                                .direction = glm::vec3(0.0f, -1.0f, 1.0f),
-                               .ambient = glm::vec3(0.1f, 0.1f, 0.1f),
-                               .diffuse = glm::vec3(0.1f, 0.1f, 0.1f),
-                               .specular = glm::vec3(0.3f, 0.2f, 0.1f)});
+                               .ambient = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
+                               .diffuse = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
+                               .specular = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f)});
 }
 
 int main() {

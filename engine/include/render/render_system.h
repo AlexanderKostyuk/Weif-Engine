@@ -50,6 +50,7 @@ private:
   Program base_program_;
 
   GLuint projection_global_UBO_;
+  GLuint directional_light_global_UBO_;
 };
 } // namespace WE::Render
 

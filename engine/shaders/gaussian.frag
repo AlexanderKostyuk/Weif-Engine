@@ -1,10 +1,11 @@
 #version 430
 
-struct DirectionLight {
-  vec3 direction;
+struct PointLight {
+  vec3 position;
   vec3 ambient;
   vec3 diffuse;
   vec3 specular;
+  vec3 intensity;
 };
 
 layout(location = 0) smooth in vec3 in_camera_space_position;
@@ -13,7 +14,12 @@ layout(location = 2) smooth in vec2 in_uv;
 
 out vec4 out_color;
 
-layout(location = 128) uniform DirectionLight direction_light;
+layout(std140, binding = 1) uniform DirectionLight {
+  vec3 direction;
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
+} direction_light;
 layout(location = 132) uniform bool direction_light_exists;
 layout(location = 133) uniform float shininess;
 
@@ -28,7 +34,6 @@ vec4 CalculateDirectionalLight(){
   float cos_angle_incidence = dot(in_vertex_normal, light_direction);
   cos_angle_incidence = clamp(cos_angle_incidence, 0, 1);
 
-
   vec3 view_dir = normalize(-in_camera_space_position);
   vec3 half_angle = normalize(light_direction + view_dir);
   vec2 gaussian_term_coord;
@@ -38,9 +43,9 @@ vec4 CalculateDirectionalLight(){
   if(cos_angle_incidence == 0)
     gaussian_term = 0;
   
-  vec4 ambient = vec4(direction_light.ambient,1.0f) * texture(diffuse_texture, in_uv);
-  vec4 diffuse = vec4(direction_light.diffuse,1.0f) * texture(diffuse_texture, in_uv) * cos_angle_incidence;
-  vec4 specular = vec4(direction_light.specular,1.0f) * texture(specular_texture, in_uv) * gaussian_term;
+  vec4 ambient = direction_light.ambient * texture(diffuse_texture, in_uv);
+  vec4 diffuse = direction_light.diffuse * texture(diffuse_texture, in_uv) * cos_angle_incidence;
+  vec4 specular = direction_light.specular * texture(specular_texture, in_uv) * gaussian_term;
 
   return ambient + diffuse + specular;
 

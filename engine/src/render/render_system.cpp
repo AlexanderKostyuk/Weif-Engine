@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <vector>
+#include <winuser.h>
 #if defined(__APPLE__)
 #include <OpenGL/gl.h>
 #else
@@ -34,6 +35,8 @@
 
 namespace {
 const GLuint kProjectionUniformBlockIndex = 0;
+const GLuint kDirectionalLightUniformBlockIndex = 1;
+const GLuint kPointLightsUniformBlockIndex = 2;
 
 const GLuint kModelCameraUniformLocation = 1;
 const GLuint kModelCameraNormalUniformLocation = 2;
@@ -87,7 +90,17 @@ void RenderSystem::GenerateGlobalUBO() {
 
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
   glBindBufferRange(GL_UNIFORM_BUFFER, kProjectionUniformBlockIndex,
-                    projection_global_UBO_, 0, sizeof(glm::mat4) * 2);
+                    projection_global_UBO_, 0, sizeof(glm::mat4));
+
+  glGenBuffers(1, &directional_light_global_UBO_);
+  glBindBuffer(GL_UNIFORM_BUFFER, directional_light_global_UBO_);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * 4, nullptr,
+               GL_STREAM_DRAW);
+
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  glBindBufferRange(GL_UNIFORM_BUFFER, kDirectionalLightUniformBlockIndex,
+                    directional_light_global_UBO_, 0,
+                    sizeof(ECS::Components::DirectionalLight));
   printf("Global UBO Generated\n");
 }
 
@@ -133,10 +146,18 @@ void RenderSystem::Draw() {
   glBindTexture(GL_TEXTURE_2D,
                 GetApplication()->GetTextureManager().GetGaussianTermTexture());
   base_program_.UseProgram();
-  auto entities =
-      coordinator
-          .GetEntities<ECS::Components::MeshRenderer,
-                       ECS::Components::Transform, ECS::Components::Material>();
+  glUniform1f(kShininess, 1.0f);
+  if (coordinator.GetComponentsAmount<ECS::Components::DirectionalLight>() <=
+      0) {
+    glUniform1i(kDirectionalLightExists, 0);
+  } else {
+    glUniform1i(kDirectionalLightExists, 1);
+    auto &directional_light =
+        coordinator.GetComponentByIndex<ECS::Components::DirectionalLight>(0);
+
+    BindDirectionalLight(directional_light);
+  }
+
   for (auto &entity : entities) {
 
     auto &mesh_renderer =
@@ -158,15 +179,16 @@ void RenderSystem::Draw() {
 
 void RenderSystem::BindDirectionalLight(
     ECS::Components::DirectionalLight &directional_light) {
-  glm::vec3 direction =
+
+  glm::vec3 light_direction_camera_space =
       glm::mat3(GetCameraMatrix()) * directional_light.direction;
-  glUniform3fv(kDirectionalLightDirection, 1, glm::value_ptr(direction));
-  glUniform3fv(kDirectionalLightAmbient, 1,
-               glm::value_ptr(directional_light.ambient));
-  glUniform3fv(kDirectionalLightDiffuse, 1,
-               glm::value_ptr(directional_light.diffuse));
-  glUniform3fv(kDirectionalLightSpecular, 1,
-               glm::value_ptr(directional_light.specular));
+
+  glBindBuffer(GL_UNIFORM_BUFFER, directional_light_global_UBO_);
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec3),
+                  glm::value_ptr(light_direction_camera_space));
+  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4) * 3,
+                  (char *)&directional_light + sizeof(glm::vec3));
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void RenderSystem::BindUniforms(ECS::Components::Transform &transform,
