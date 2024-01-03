@@ -114,17 +114,7 @@ void Application::InitComponents() {
 }
 
 void Application::InitSystems() {
-
-  ECS::Signature render_signature;
-  render_signature.set(
-      coordinator_.GetComponentType<ECS::Components::Transform>());
-  render_signature.set(
-      coordinator_.GetComponentType<ECS::Components::MeshRenderer>());
-  render_signature.set(
-      coordinator_.GetComponentType<ECS::Components::Material>());
   render_system_ = coordinator_.RegisterSystem<Render::RenderSystem>(this);
-  coordinator_.SetSystemSignature<Render::RenderSystem>(render_signature);
-
   render_system_->SetViewportSize(window_width_, window_height_);
 }
 

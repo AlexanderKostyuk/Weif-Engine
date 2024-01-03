@@ -22,7 +22,6 @@ public:
   void DestroyEntity(Entity entity) {
     entity_manager->DestroyEntity(entity);
     component_manager->EntityDestroyed(entity);
-    system_manager->EntityDestroyed(entity);
   }
 
   template <typename T> void RegisterComponent() {
@@ -35,8 +34,6 @@ public:
     auto signature = entity_manager->GetSignature(entity);
     signature.set(component_manager->GetComponentType<T>(), true);
     entity_manager->SetSignature(entity, signature);
-
-    system_manager->EntitySignatureChanged(entity, signature);
   }
 
   template <typename T> void RemoveComponent(Entity entity) {
@@ -45,8 +42,6 @@ public:
     auto signature = entity_manager->GetSignature(entity);
     signature.set(component_manager->GetComponentType<T>(), false);
     entity_manager->SetSignature(entity, signature);
-
-    system_manager->EntitySignatureChanged(entity, signature);
   }
 
   template <typename T> inline T &GetComponent(Entity entity) {
@@ -57,16 +52,30 @@ public:
     return component_manager->GetComponentType<T>();
   }
 
+  template <typename... Types> inline std::vector<Entity> GetEntities() const {
+    std::vector<Entity> entities{};
+    entities.reserve(k_max_entities);
+    for (Entity entity = 0; entity < k_max_entities; entity++) {
+      if (EntityHasComponent<Types...>(entity))
+        entities.push_back(entity);
+    }
+    // returning vector without reserved memory
+    return std::vector<Entity>(entities);
+  }
+
+  template <typename... Types>
+  inline bool EntityHasComponent(Entity entity) const {
+    auto entity_signature = entity_manager->GetSignature(entity);
+    auto component_signature = component_manager->GetSignature<Types...>();
+    return (entity_signature & component_signature) == component_signature;
+  }
+
   template <typename T>
   inline std::shared_ptr<T> RegisterSystem(Application *application) {
     return system_manager->RegisterSystem<T>(application);
   }
 
-  template <typename T> inline void SetSystemSignature(Signature signature) {
-    system_manager->SetSignature<T>(signature);
-  }
-
-  inline void UpdateSystems(float delta_time) {
+  inline void UpdateSystems(float delta_time) const {
     system_manager->UpdateSystems(delta_time);
   }
 

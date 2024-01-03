@@ -21,10 +21,14 @@ public:
 
   Entity CreateEntity();
   void DestroyEntity(Entity entity);
+
   inline void SetSignature(Entity entity, Signature signature) {
     signatures[entity] = signature;
   }
-  inline Signature GetSignature(Entity entity) { return signatures.at(entity); }
+
+  inline Signature GetSignature(Entity entity) const {
+    return signatures.at(entity);
+  }
 
 private:
   std::queue<Entity> available_entities{};

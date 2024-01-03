@@ -17,9 +17,23 @@ public:
     next_component_type++;
   }
 
-  template <typename T> ComponentType GetComponentType() {
+  template <typename T> ComponentType GetComponentType() const {
     const char *type_name = typeid(T).name();
     return component_types.at(type_name);
+  }
+
+  template <typename T> Signature GetSignature() const {
+    auto component_type = GetComponentType<T>();
+    Signature signature{};
+    signature.set(component_type, true);
+    return signature;
+  }
+
+  template <typename T, typename V, typename... Types>
+  Signature GetSignature() const {
+    Signature signature{};
+    signature |= GetSignature<T>() | GetSignature<V, Types...>();
+    return signature;
   }
 
   template <typename T> void AddComponent(Entity entity, T component) {

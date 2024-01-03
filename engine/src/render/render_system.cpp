@@ -119,6 +119,10 @@ void RenderSystem::Draw() {
   auto &coordinator = GetApplication()->GetCoordinator();
 
   base_program_.UseProgram();
+  auto entities =
+      coordinator
+          .GetEntities<ECS::Components::MeshRenderer,
+                       ECS::Components::Transform, ECS::Components::Material>();
   for (auto &entity : entities) {
 
     auto &mesh_renderer =
