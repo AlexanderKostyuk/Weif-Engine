@@ -1,7 +1,7 @@
 #include "render/render_system.h"
 
-#include "ECS/components/directional_light.h"
 #include "stb_image.h"
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <vector>
@@ -25,8 +25,10 @@
 #include <glm/gtx/string_cast.hpp>
 #include <glm/matrix.hpp>
 
+#include "ECS/components/directional_light.h"
 #include "ECS/components/material.h"
 #include "ECS/components/mesh_renderer.h"
+#include "ECS/components/point_light.h"
 #include "ECS/components/transform.h"
 #include "ECS/coordinator.h"
 #include "application.h"
@@ -47,6 +49,7 @@ const GLuint kDirectionalLightDiffuse = 130;
 const GLuint kDirectionalLightSpecular = 131;
 const GLuint kDirectionalLightExists = 132;
 const GLuint kShininess = 133;
+const GLuint kAmountOfPointLights = 134;
 
 } // namespace
 
@@ -78,6 +81,8 @@ void RenderSystem::GenerateProgram() {
 
 void RenderSystem::GenerateGlobalUBO() {
   printf("Generating Global UBO...\n");
+
+  // Projection Matrix UBO
   glGenBuffers(1, &projection_global_UBO_);
   glBindBuffer(GL_UNIFORM_BUFFER, projection_global_UBO_);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), nullptr, GL_STREAM_DRAW);
@@ -91,16 +96,31 @@ void RenderSystem::GenerateGlobalUBO() {
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
   glBindBufferRange(GL_UNIFORM_BUFFER, kProjectionUniformBlockIndex,
                     projection_global_UBO_, 0, sizeof(glm::mat4));
+  // Projection Matrix UBO END
 
+  // Directional Light UBO
   glGenBuffers(1, &directional_light_global_UBO_);
   glBindBuffer(GL_UNIFORM_BUFFER, directional_light_global_UBO_);
-  glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) * 4, nullptr,
-               GL_STREAM_DRAW);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(ECS::Components::DirectionalLight) * 4,
+               nullptr, GL_STREAM_DRAW);
 
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
   glBindBufferRange(GL_UNIFORM_BUFFER, kDirectionalLightUniformBlockIndex,
                     directional_light_global_UBO_, 0,
                     sizeof(ECS::Components::DirectionalLight));
+  // Directional Light UBO END
+
+  // Point Lights UBO
+  glGenBuffers(1, &point_light_global_UBO_);
+  glBindBuffer(GL_UNIFORM_BUFFER, point_light_global_UBO_);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(ECS::Components::PointLight) * 8,
+               nullptr, GL_STREAM_DRAW);
+
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+  glBindBufferRange(GL_UNIFORM_BUFFER, kPointLightsUniformBlockIndex,
+                    point_light_global_UBO_, 0,
+                    sizeof(ECS::Components::PointLight) * 8);
+  // Point Lights UBO END
   printf("Global UBO Generated\n");
 }
 
@@ -147,25 +167,21 @@ void RenderSystem::Draw() {
                 GetApplication()->GetTextureManager().GetGaussianTermTexture());
   base_program_.UseProgram();
   glUniform1f(kShininess, 1.0f);
-  if (coordinator.GetComponentsAmount<ECS::Components::DirectionalLight>() <=
-      0) {
-    glUniform1i(kDirectionalLightExists, 0);
-  } else {
-    glUniform1i(kDirectionalLightExists, 1);
-    auto &directional_light =
-        coordinator.GetComponentByIndex<ECS::Components::DirectionalLight>(0);
+  BindDirectionalLight();
+  BindPointLights();
+  auto objects =
+      coordinator
+          .GetEntities<ECS::Components::MeshRenderer,
+                       ECS::Components::Transform, ECS::Components::Material>();
 
-    BindDirectionalLight(directional_light);
-  }
-
-  for (auto &entity : entities) {
+  for (auto &object : objects) {
 
     auto &mesh_renderer =
-        coordinator.GetComponent<ECS::Components::MeshRenderer>(entity);
+        coordinator.GetComponent<ECS::Components::MeshRenderer>(object);
     auto &transform =
-        coordinator.GetComponent<ECS::Components::Transform>(entity);
+        coordinator.GetComponent<ECS::Components::Transform>(object);
     auto &material =
-        coordinator.GetComponent<ECS::Components::Material>(entity);
+        coordinator.GetComponent<ECS::Components::Material>(object);
 
     BindUniforms(transform, camera_matrix);
     BindTextures(material);
@@ -177,17 +193,50 @@ void RenderSystem::Draw() {
   glfwSwapBuffers(GetApplication()->GetWindow());
 }
 
-void RenderSystem::BindDirectionalLight(
-    ECS::Components::DirectionalLight &directional_light) {
+void RenderSystem::BindDirectionalLight() {
 
-  glm::vec3 light_direction_camera_space =
+  auto &coordinator = GetApplication()->GetCoordinator();
+  auto directional_lights =
+      coordinator.GetEntities<ECS::Components::DirectionalLight>();
+
+  if (directional_lights.size() <= 0) {
+    glUniform1i(kDirectionalLightExists, 0);
+    return;
+  } else {
+    glUniform1i(kDirectionalLightExists, 1);
+  }
+
+  auto directional_light =
+      coordinator.GetComponent<ECS::Components::DirectionalLight>(
+          directional_lights[0]);
+
+  directional_light.direction =
       glm::mat3(GetCameraMatrix()) * directional_light.direction;
 
   glBindBuffer(GL_UNIFORM_BUFFER, directional_light_global_UBO_);
-  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec3),
-                  glm::value_ptr(light_direction_camera_space));
-  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(glm::vec4) * 3,
-                  (char *)&directional_light + sizeof(glm::vec3));
+  glBufferSubData(GL_UNIFORM_BUFFER, 0,
+                  sizeof(ECS::Components::DirectionalLight),
+                  &directional_light);
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+void RenderSystem::BindPointLights() {
+  auto &coordinator = GetApplication()->GetCoordinator();
+  auto point_lights = coordinator.GetEntities<ECS::Components::PointLight>();
+  auto lights_amount = std::min(point_lights.size(), (size_t)8);
+  glUniform1i(kAmountOfPointLights, lights_amount);
+
+  glm::mat4 camera_matrix = GetCameraMatrix();
+
+  glBindBuffer(GL_UNIFORM_BUFFER, point_light_global_UBO_);
+  for (int i = 0; i < lights_amount; i++) {
+    auto point_light =
+        coordinator.GetComponent<ECS::Components::PointLight>(point_lights[i]);
+    point_light.position =
+        camera_matrix * glm::vec4(point_light.position, 1.0f);
+    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(ECS::Components::PointLight) * i,
+                    sizeof(ECS::Components::PointLight), &point_light);
+  }
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 

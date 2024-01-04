@@ -6,6 +6,7 @@
 #include "ECS/system_manager.hpp"
 #include "input/input_manager.h"
 #include <memory>
+#include <vector>
 namespace WE::ECS {
 
 class Coordinator {
@@ -48,34 +49,26 @@ public:
     return component_manager->GetComponent<T>(entity);
   }
 
-  template <typename T> inline T &GetComponentByIndex(std::size_t index) {
-    return component_manager->GetComponentByIndex<T>(index);
-  }
-
-  template <typename T> inline std::size_t GetComponentsAmount() {
-    return component_manager->GetComponentsAmount<T>();
-  }
-
   template <typename T> inline ComponentType GetComponentType() {
     return component_manager->GetComponentType<T>();
   }
 
   template <typename... Types> inline std::vector<Entity> GetEntities() const {
     std::vector<Entity> entities{};
-    entities.reserve(k_max_entities);
-    for (Entity entity = 0; entity < k_max_entities; entity++) {
-      if (EntityHasComponent<Types...>(entity))
+    auto components_signature = component_manager->GetSignature<Types...>();
+    entities.reserve(entity_manager->GetMax() + 1);
+    for (Entity entity = 0; entity <= entity_manager->GetMax(); entity++) {
+      if (EntityHasComponents(entity, components_signature))
         entities.push_back(entity);
     }
     // returning vector without reserved memory
     return std::vector<Entity>(entities);
   }
 
-  template <typename... Types>
-  inline bool EntityHasComponent(Entity entity) const {
+  inline bool EntityHasComponents(Entity entity,
+                                  Signature components_signature) const {
     auto entity_signature = entity_manager->GetSignature(entity);
-    auto component_signature = component_manager->GetSignature<Types...>();
-    return (entity_signature & component_signature) == component_signature;
+    return (entity_signature & components_signature) == components_signature;
   }
 
   template <typename T>

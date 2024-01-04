@@ -22,8 +22,9 @@ private:
   void UpdatePerspectiveMatrix();
   void Draw();
   void DrawMesh(MeshId mesh_id);
-  void
-  BindDirectionalLight(ECS::Components::DirectionalLight &directional_light);
+  void BindDirectionalLight();
+  void BindPointLights();
+
   void BindUniforms(ECS::Components::Transform &transform,
                     glm::mat4 &camera_matrix);
   void BindTextures(ECS::Components::Material &material);
@@ -39,8 +40,6 @@ public:
   void SetZ(GLfloat z_near, GLfloat z_far);
 
 private:
-  glm::vec4 light_position_;
-
   GLuint viewport_width_ = 800;
   GLuint viewport_height_ = 600;
   GLfloat fov_ = 45.0f;
@@ -51,6 +50,7 @@ private:
 
   GLuint projection_global_UBO_;
   GLuint directional_light_global_UBO_;
+  GLuint point_light_global_UBO_;
 };
 } // namespace WE::Render
 

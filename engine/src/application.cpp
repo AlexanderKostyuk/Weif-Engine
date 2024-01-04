@@ -1,5 +1,6 @@
 #include "application.h"
 #include "ECS/components/directional_light.h"
+#include "ECS/components/point_light.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -117,18 +118,12 @@ void Application::InitComponents() {
   coordinator_.RegisterComponent<ECS::Components::MeshRenderer>();
   coordinator_.RegisterComponent<ECS::Components::Material>();
   coordinator_.RegisterComponent<ECS::Components::DirectionalLight>();
+  coordinator_.RegisterComponent<ECS::Components::PointLight>();
   printf("Components intialized\n");
 }
 
 void Application::InitSystems() {
   printf("Initializing systems...\n");
-  ECS::Signature render_signature;
-  render_signature.set(
-      coordinator_.GetComponentType<ECS::Components::Transform>());
-  render_signature.set(
-      coordinator_.GetComponentType<ECS::Components::MeshRenderer>());
-  render_signature.set(
-      coordinator_.GetComponentType<ECS::Components::Material>());
   render_system_ = coordinator_.RegisterSystem<Render::RenderSystem>(this);
   render_system_->SetViewportSize(window_width_, window_height_);
   printf("Systems initialized\n");

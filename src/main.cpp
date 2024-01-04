@@ -1,4 +1,5 @@
 #include "ECS/components/directional_light.h"
+#include "ECS/components/point_light.h"
 #define GLFW_DLL
 #include <glm/fwd.hpp>
 #include <vector>
@@ -77,8 +78,29 @@ void InitEntities() {
                            WE::ECS::Components::DirectionalLight{
                                .direction = glm::vec3(0.0f, -1.0f, 1.0f),
                                .ambient = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
-                               .diffuse = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
-                               .specular = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f)});
+                               .diffuse = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f),
+                               .specular = glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)});
+  auto point_light_red = coordinator.CreateEntity();
+  coordinator.AddComponent(point_light_red,
+                           WE::ECS::Components::PointLight{
+                               .position = glm::vec3(0.0f, 0.0f, -5.0f),
+                               .ambient = glm::vec4(0.1f, 0.0f, 0.0f, 1.0f),
+                               .diffuse = glm::vec4(0.2f, 0.0f, 0.0f, 1.0f),
+                               .specular = glm::vec4(0.3f, 0.0f, 0.0f, 1.0f)});
+  auto point_light_blue = coordinator.CreateEntity();
+  coordinator.AddComponent(point_light_blue,
+                           WE::ECS::Components::PointLight{
+                               .position = glm::vec3(-4.0f, 0.0f, -5.0f),
+                               .ambient = glm::vec4(0.0f, 0.0f, 0.1f, 1.0f),
+                               .diffuse = glm::vec4(0.0f, 0.0f, 0.2f, 1.0f),
+                               .specular = glm::vec4(0.0f, 0.0f, 0.3f, 1.0f)});
+  auto point_light_green = coordinator.CreateEntity();
+  coordinator.AddComponent(point_light_green,
+                           WE::ECS::Components::PointLight{
+                               .position = glm::vec3(4.0f, 0.0f, -5.0f),
+                               .ambient = glm::vec4(0.0f, 0.1f, 0.0f, 1.0f),
+                               .diffuse = glm::vec4(0.0f, 0.2f, 0.0f, 1.0f),
+                               .specular = glm::vec4(0.0f, 0.3f, 0.0f, 1.0f)});
 }
 
 int main() {

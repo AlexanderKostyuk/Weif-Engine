@@ -1,13 +1,5 @@
 #version 430
 
-struct PointLight {
-  vec3 position;
-  vec3 ambient;
-  vec3 diffuse;
-  vec3 specular;
-  vec3 intensity;
-};
-
 layout(location = 0) smooth in vec3 in_camera_space_position;
 layout(location = 1) smooth in vec3 in_vertex_normal;
 layout(location = 2) smooth in vec2 in_uv;
@@ -20,8 +12,19 @@ layout(std140, binding = 1) uniform DirectionLight {
   vec4 diffuse;
   vec4 specular;
 } direction_light;
+struct PointLight {
+  vec3 position;
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
+  vec3 intensity;
+};
+layout(std140, binding = 2) uniform PointLights {
+  PointLight lights[8];
+} point_lights;
 layout(location = 132) uniform bool direction_light_exists;
 layout(location = 133) uniform float shininess;
+layout(location = 134) uniform int amount_of_point_lights;
 
 
 layout(binding = 0) uniform sampler2D gaussian_texture;
@@ -51,10 +54,42 @@ vec4 CalculateDirectionalLight(){
 
 }
 
+vec4 CalculatePointLight(PointLight point_light){
+
+
+
+  vec3 light_direction = point_light.position - in_camera_space_position;
+  float distance_square = dot(light_direction, light_direction);
+  light_direction = normalize(light_direction);
+  float cos_angle_incidence = dot(in_vertex_normal, light_direction);
+  cos_angle_incidence = clamp(cos_angle_incidence, 0, 1);
+
+  vec3 view_dir = normalize(-in_camera_space_position);
+  vec3 half_angle = normalize(light_direction + view_dir);
+  vec2 gaussian_term_coord;
+  gaussian_term_coord.s = dot(in_vertex_normal, half_angle);
+  gaussian_term_coord.t = 0.5f;
+  float gaussian_term = texture(gaussian_texture, gaussian_term_coord).r;
+  if(cos_angle_incidence == 0)
+    gaussian_term = 0;
+
+  float attentuation = 1.0 / (point_light.intensity.x + point_light.intensity.y * sqrt(distance_square) + point_light.intensity.z * distance_square);
+  
+  vec4 ambient = point_light.ambient * texture(diffuse_texture, in_uv);
+  vec4 diffuse = point_light.diffuse * texture(diffuse_texture, in_uv) * cos_angle_incidence;
+  vec4 specular = point_light.specular * texture(specular_texture, in_uv) * gaussian_term;
+
+  return (ambient + diffuse + specular) * attentuation;
+
+}
+
 void main() {
 
   out_color = vec4(0.0f,0.0f,0.0f,1.0f);
 
   if(direction_light_exists) out_color += CalculateDirectionalLight();
+  for(int i = 0; i < amount_of_point_lights; i++) {
+    out_color += CalculatePointLight(point_lights.lights[i]);
+  }
 
 }

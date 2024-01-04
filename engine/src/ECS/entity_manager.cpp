@@ -1,5 +1,7 @@
 #include "ECS/entity_manager.h"
 
+#include <stack>
+
 namespace WE::ECS {
 
 EntityManager::EntityManager() {
@@ -8,17 +10,17 @@ EntityManager::EntityManager() {
 }
 
 Entity EntityManager::CreateEntity() {
-  Entity entity = available_entities.front();
+  Entity entity = available_entities.top();
   available_entities.pop();
-  available_entities_count++;
+  max_entity = std::max(max_entity, entity);
   return entity;
 }
 
 void EntityManager::DestroyEntity(Entity entity) {
   signatures[entity].reset();
-
   available_entities.push(entity);
-  available_entities_count--;
+  if (max_entity <= entity)
+    max_entity--;
 }
 
 } // namespace WE::ECS

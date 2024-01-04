@@ -4,7 +4,7 @@
 #include <array>
 #include <bitset>
 #include <cstdint>
-#include <queue>
+#include <stack>
 namespace WE::ECS {
 
 using Entity = std::uint32_t;
@@ -16,6 +16,9 @@ const ComponentType k_max_components = 128;
 using Signature = std::bitset<k_max_components>;
 
 class EntityManager {
+private:
+  void ResetMaxEntity();
+
 public:
   EntityManager();
 
@@ -30,10 +33,12 @@ public:
     return signatures.at(entity);
   }
 
+  inline Entity GetMax() const { return max_entity; }
+
 private:
-  std::queue<Entity> available_entities{};
+  std::stack<Entity> available_entities{};
   std::array<Signature, k_max_entities> signatures{};
-  std::uint32_t available_entities_count;
+  Entity max_entity = 0;
 };
 
 } // namespace WE::ECS
