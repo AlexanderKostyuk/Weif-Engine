@@ -1,15 +1,19 @@
-#include "ECS/components/directional_light.h"
-#include "ECS/components/point_light.h"
 #define GLFW_DLL
+#define _USE_MATH_DEFINES
 #include <glm/fwd.hpp>
+#include <math.h>
 #include <vector>
 
+#include "ECS/components/directional_light.h"
 #include "ECS/components/material.h"
 #include "ECS/components/mesh_renderer.h"
+#include "ECS/components/point_light.h"
 #include "ECS/components/transform.h"
 #include "application.h"
-#include "camera_control_system.h"
+#include "components/traveling_light.h"
 #include "render/model_manager.h"
+#include "systems/camera_control_system.h"
+#include "systems/light_travel_system.h"
 
 WE::Application application;
 
@@ -43,7 +47,13 @@ void InitModels() {
 
 void InitSystems() {
   auto &coordinator = application.GetCoordinator();
-  coordinator.RegisterSystem<WE::CameraControlSystem>(&application);
+  coordinator.RegisterSystem<Demo::Systems::CameraControlSystem>(application);
+  coordinator.RegisterSystem<Demo::Systems::LightTravelSystem>(application);
+}
+
+void InitComponents() {
+  auto &coordinator = application.GetCoordinator();
+  coordinator.RegisterComponent<Demo::Components::TravelingLight>();
 }
 
 void InitEntities() {
@@ -73,39 +83,52 @@ void InitEntities() {
       plane, WE::ECS::Components::MeshRenderer{.mesh_id = g_plane_mesh});
   coordinator.AddComponent(plane, WE::ECS::Components::Material{});
 
-  auto dir_light = coordinator.CreateEntity();
-  coordinator.AddComponent(dir_light,
-                           WE::ECS::Components::DirectionalLight{
-                               .direction = glm::vec3(0.0f, -1.0f, 1.0f),
-                               .ambient = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
-                               .diffuse = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f),
-                               .specular = glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)});
+  // auto dir_light = coordinator.CreateEntity();
+  // coordinator.AddComponent(dir_light,
+  //                          WE::ECS::Components::DirectionalLight{
+  //                              .direction = glm::vec3(0.0f, -1.0f, 1.0f),
+  //                              .ambient = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
+  //                              .diffuse = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f),
+  //                              .specular = glm::vec4(0.3f, 0.3f,
+  //                              0.3f, 1.0f)});
   auto point_light_red = coordinator.CreateEntity();
   coordinator.AddComponent(point_light_red,
                            WE::ECS::Components::PointLight{
-                               .position = glm::vec3(0.0f, 0.0f, -5.0f),
                                .ambient = glm::vec4(0.1f, 0.0f, 0.0f, 1.0f),
                                .diffuse = glm::vec4(0.2f, 0.0f, 0.0f, 1.0f),
                                .specular = glm::vec4(0.3f, 0.0f, 0.0f, 1.0f)});
+  coordinator.AddComponent(
+      point_light_red,
+      Demo::Components::TravelingLight{
+          .start_position = glm::vec3(0.0f, 0.0f, -5.0f), .speed = 0.0f});
   auto point_light_blue = coordinator.CreateEntity();
   coordinator.AddComponent(point_light_blue,
                            WE::ECS::Components::PointLight{
-                               .position = glm::vec3(-4.0f, 0.0f, -5.0f),
                                .ambient = glm::vec4(0.0f, 0.0f, 0.1f, 1.0f),
                                .diffuse = glm::vec4(0.0f, 0.0f, 0.2f, 1.0f),
                                .specular = glm::vec4(0.0f, 0.0f, 0.3f, 1.0f)});
+  coordinator.AddComponent(point_light_blue,
+                           Demo::Components::TravelingLight{
+                               .current_time = 0.5f * M_PI,
+                               .start_position = glm::vec3(0.0f, 0.0f, -5.0f),
+                               .speed = 0.5f});
   auto point_light_green = coordinator.CreateEntity();
   coordinator.AddComponent(point_light_green,
                            WE::ECS::Components::PointLight{
-                               .position = glm::vec3(4.0f, 0.0f, -5.0f),
                                .ambient = glm::vec4(0.0f, 0.1f, 0.0f, 1.0f),
                                .diffuse = glm::vec4(0.0f, 0.2f, 0.0f, 1.0f),
                                .specular = glm::vec4(0.0f, 0.3f, 0.0f, 1.0f)});
+  coordinator.AddComponent(point_light_green,
+                           Demo::Components::TravelingLight{
+                               .current_time = 1.5f * M_PI,
+                               .start_position = glm::vec3(0.0f, 0.0f, -5.0f),
+                               .speed = 1.5f});
 }
 
 int main() {
   InitTextures();
   InitModels();
+  InitComponents();
   InitSystems();
   InitEntities();
 

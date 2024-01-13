@@ -55,7 +55,8 @@ const GLuint kAmountOfPointLights = 134;
 
 namespace WE::Render {
 
-RenderSystem::RenderSystem() {
+RenderSystem::RenderSystem(WE::Application &application)
+    : ISystem(application) {
 
   glEnable(GL_CULL_FACE);
   glEnable(GL_FRAMEBUFFER_SRGB);
@@ -160,11 +161,11 @@ void RenderSystem::Draw() {
   glClearDepth(1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glm::mat4 camera_matrix = GetCameraMatrix();
-  auto &coordinator = GetApplication()->GetCoordinator();
+  auto &coordinator = GetApplication().GetCoordinator();
 
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D,
-                GetApplication()->GetTextureManager().GetGaussianTermTexture());
+                GetApplication().GetTextureManager().GetGaussianTermTexture());
   base_program_.UseProgram();
   glUniform1f(kShininess, 1.0f);
   BindDirectionalLight();
@@ -190,12 +191,12 @@ void RenderSystem::Draw() {
   }
   base_program_.FreeProgram();
 
-  glfwSwapBuffers(GetApplication()->GetWindow());
+  glfwSwapBuffers(GetApplication().GetWindow());
 }
 
 void RenderSystem::BindDirectionalLight() {
 
-  auto &coordinator = GetApplication()->GetCoordinator();
+  auto &coordinator = GetApplication().GetCoordinator();
   auto directional_lights =
       coordinator.GetEntities<ECS::Components::DirectionalLight>();
 
@@ -221,7 +222,7 @@ void RenderSystem::BindDirectionalLight() {
 }
 
 void RenderSystem::BindPointLights() {
-  auto &coordinator = GetApplication()->GetCoordinator();
+  auto &coordinator = GetApplication().GetCoordinator();
   auto point_lights = coordinator.GetEntities<ECS::Components::PointLight>();
   auto lights_amount = std::min(point_lights.size(), (size_t)8);
   glUniform1i(kAmountOfPointLights, lights_amount);
@@ -259,7 +260,7 @@ void RenderSystem::BindUniforms(ECS::Components::Transform &transform,
 
 void RenderSystem::BindTextures(ECS::Components::Material &material) {
 
-  auto &texture_manager = GetApplication()->GetTextureManager();
+  auto &texture_manager = GetApplication().GetTextureManager();
   GLuint diffuse_texture =
       material.diffuse_texture_id == 0
           ? texture_manager.GetDefaultDiffuseTexture()
@@ -277,9 +278,9 @@ void RenderSystem::BindTextures(ECS::Components::Material &material) {
 
 void RenderSystem::DrawMesh(MeshId mesh_id) {
 
-  GLuint VAO = GetApplication()->GetModelManager().GetVAO(mesh_id);
+  GLuint VAO = GetApplication().GetModelManager().GetVAO(mesh_id);
   GLuint elements_amount =
-      GetApplication()->GetModelManager().GetIndicesAmount(mesh_id);
+      GetApplication().GetModelManager().GetIndicesAmount(mesh_id);
 
   glBindVertexArray(VAO);
   glDrawElements(GL_TRIANGLES, elements_amount, GL_UNSIGNED_INT, 0);
@@ -287,7 +288,7 @@ void RenderSystem::DrawMesh(MeshId mesh_id) {
 }
 
 glm::mat4 RenderSystem::GetCameraMatrix() {
-  auto &camera = GetApplication()->GetCamera();
+  auto &camera = GetApplication().GetCamera();
   return glm::translate(glm::mat4(camera.rotation), camera.position);
 }
 

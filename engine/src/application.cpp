@@ -124,7 +124,7 @@ void Application::InitComponents() {
 
 void Application::InitSystems() {
   printf("Initializing systems...\n");
-  render_system_ = coordinator_.RegisterSystem<Render::RenderSystem>(this);
+  render_system_ = coordinator_.RegisterSystem<Render::RenderSystem>(*this);
   render_system_->SetViewportSize(window_width_, window_height_);
   printf("Systems initialized\n");
 }

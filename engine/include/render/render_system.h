@@ -32,7 +32,7 @@ private:
   glm::mat4 GetCameraMatrix();
 
 public:
-  RenderSystem();
+  RenderSystem(WE::Application &application);
   void Update(float delta_time) override;
 
   void SetViewportSize(GLuint width, GLuint height);

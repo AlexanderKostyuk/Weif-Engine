@@ -8,10 +8,9 @@ namespace WE::ECS {
 class SystemManager {
 public:
   template <typename T>
-  std::shared_ptr<T> RegisterSystem(Application *application) {
+  std::shared_ptr<T> RegisterSystem(WE::Application &application) {
     const char *type_name = typeid(T).name();
-    auto system = std::make_shared<T>();
-    system->SetApplication(application);
+    auto system = std::make_shared<T>(application);
     systems.insert({type_name, system});
     return system;
   }

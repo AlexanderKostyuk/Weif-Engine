@@ -13,13 +13,12 @@ public:
   virtual void Update(float delta_time) = 0;
   virtual ~ISystem() = default;
 
-  inline WE::Application *GetApplication() const { return application_; }
-  inline void SetApplication(WE::Application *application) {
-    application_ = application;
-  }
+  ISystem(WE::Application &application) : application_(application) {}
+
+  inline WE::Application &GetApplication() const { return application_; }
 
 private:
-  WE::Application *application_;
+  WE::Application &application_;
 };
 } // namespace WE::ECS
 

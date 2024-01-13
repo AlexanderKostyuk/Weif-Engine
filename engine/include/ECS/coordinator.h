@@ -54,15 +54,19 @@ public:
   }
 
   template <typename... Types> inline std::vector<Entity> GetEntities() const {
-    std::vector<Entity> entities{};
     auto components_signature = component_manager->GetSignature<Types...>();
-    entities.reserve(entity_manager->GetMax() + 1);
-    for (Entity entity = 0; entity <= entity_manager->GetMax(); entity++) {
+    return GetEntities(components_signature);
+  }
+
+  inline std::vector<Entity> GetEntities(Signature components_signature) const {
+    std::vector<Entity> entities{};
+    entities.reserve(entity_manager->GetLastEntity() + 1);
+    for (Entity entity = 0; entity <= entity_manager->GetLastEntity();
+         entity++) {
       if (EntityHasComponents(entity, components_signature))
         entities.push_back(entity);
     }
-    // returning vector without reserved memory
-    return std::vector<Entity>(entities);
+    return entities;
   }
 
   inline bool EntityHasComponents(Entity entity,
@@ -72,7 +76,7 @@ public:
   }
 
   template <typename T>
-  inline std::shared_ptr<T> RegisterSystem(Application *application) {
+  inline std::shared_ptr<T> RegisterSystem(WE::Application &application) {
     return system_manager->RegisterSystem<T>(application);
   }
 
