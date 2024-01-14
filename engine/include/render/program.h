@@ -19,6 +19,10 @@ public:
   Program() = default;
   Program(const char *vertex_shader_path, const char *fragment_shader_path);
   Program(std::string &vertex_shader_path, std::string &fragment_shader_path);
+  Program(const char *vertex_shader_path, const char *fragment_shader_path,
+          const char *geometry_shader_path);
+  Program(std::string &vertex_shader_path, std::string &fragment_shader_path,
+          std::string &geometry_shader_path);
 
   inline void UseProgram() { glUseProgram(gl_program_); }
   inline void FreeProgram() { glUseProgram(0); }

@@ -1,4 +1,4 @@
-#version 430
+#version 460 core
 
 layout(location = 0) smooth in vec3 in_camera_space_position;
 layout(location = 1) smooth in vec3 in_vertex_normal;
@@ -29,11 +29,14 @@ layout(std140, binding = 2) uniform PointLights {
 layout(location = 132) uniform bool direction_light_exists;
 layout(location = 133) uniform float shininess;
 layout(location = 134) uniform int amount_of_point_lights;
+layout(location = 135) uniform mat3 camera_to_world_rotation_matrix;
+layout(location = 9) uniform float far_plane;
 
 
 layout(binding = 0) uniform sampler2D gaussian_texture;
 layout(binding = 1) uniform sampler2D diffuse_texture;
 layout(binding = 2) uniform sampler2D specular_texture;
+layout(binding = 3) uniform samplerCube shadow_maps[8];
 
 vec4 CalculateLightParameters(vec3 light_direction, LightInfo light_info){
   float cos_angle_incidence = dot(in_vertex_normal, light_direction);
@@ -64,15 +67,29 @@ vec4 CalculateDirectionalLight(DirectionalLight directional_light){
   return color;
 }
 
-vec4 CalculatePointLight(PointLight point_light){
+vec4 CalculatePointLight(PointLight point_light, float shadow){
 
   vec3 light_direction = point_light.position - in_camera_space_position;
   float distance_square = dot(light_direction, light_direction);
   light_direction = normalize(light_direction);
   float attentuation = 1.0 / (point_light.intensity.x + point_light.intensity.y * sqrt(distance_square) + point_light.intensity.z * distance_square);
+  if(shadow >= 1.0f) return point_light.light_info.ambient * texture(diffuse_texture, in_uv) * attentuation;
+
 
   vec4 color = CalculateLightParameters(light_direction, point_light.light_info);
   return color * attentuation;
+}
+
+float ShadowCalculation(int shadow_map_id, vec3 light_position) {
+
+  vec3 frag_to_light = camera_to_world_rotation_matrix * (in_camera_space_position - light_position);
+  float closest_depth = texture(shadow_maps[shadow_map_id],frag_to_light).r;
+  closest_depth *= far_plane;
+  float current_depth = length(frag_to_light);
+  float shadow = current_depth - 0.5f > closest_depth ? 1.0 : 0.0;
+
+  return shadow;
+
 }
 
 void main() {
@@ -81,7 +98,8 @@ void main() {
 
   if(direction_light_exists) out_color += CalculateDirectionalLight(directional_light);
   for(int i = 0; i < amount_of_point_lights; i++) {
-    out_color += CalculatePointLight(point_lights[i]);
+    float shadow = ShadowCalculation(i, point_lights[i].position);
+    out_color += CalculatePointLight(point_lights[i],shadow);
   }
 
 }

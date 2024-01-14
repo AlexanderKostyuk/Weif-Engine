@@ -22,10 +22,8 @@ public:
   inline void SetSpeed(float speed) { speed_ = speed; }
 
 private:
-  float speed_ = 1.0f;
-  float speed_change_speed_ = 0.25f;
-  float input_timer_ = 0.0f;
-  float input_delay_ = 0.5f;
+  float speed_ = 0.5f;
+  float speed_change_speed_ = 0.10f;
 };
 
 } // namespace Demo::Systems

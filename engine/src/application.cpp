@@ -90,7 +90,7 @@ void Application::InitWindow() {
   glfwInit();
   glfwSetErrorCallback(glfwErrorCallback);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   window_ = glfwCreateWindow(window_width_, window_height_,

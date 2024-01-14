@@ -1,7 +1,10 @@
 #include "render/render_system.h"
 
+#include "ECS/entity_manager.h"
+#include "glm/ext/matrix_clip_space.hpp"
 #include "stb_image.h"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <vector>
@@ -43,6 +46,11 @@ const GLuint kPointLightsUniformBlockIndex = 2;
 const GLuint kModelCameraUniformLocation = 1;
 const GLuint kModelCameraNormalUniformLocation = 2;
 
+const GLuint kModelWorldSpaceUniformLocation = 1;
+const GLuint kShadowMatricesUniformLocation = 2;
+const GLuint kLightPositionUniformLocation = 8;
+const GLuint kFarPlaneUniformLocation = 9;
+
 const GLuint kDirectionalLightDirection = 128;
 const GLuint kDirectionalLightAmbient = 129;
 const GLuint kDirectionalLightDiffuse = 130;
@@ -50,6 +58,9 @@ const GLuint kDirectionalLightSpecular = 131;
 const GLuint kDirectionalLightExists = 132;
 const GLuint kShininess = 133;
 const GLuint kAmountOfPointLights = 134;
+const GLuint kCameraToWorldRotationMatrixUniformLocation = 135;
+
+uint16_t kShadowMapWidth = 8192, kShadowMapHeight = 8192;
 
 } // namespace
 
@@ -69,6 +80,8 @@ RenderSystem::RenderSystem(WE::Application &application)
 
   stbi_set_flip_vertically_on_load(true);
 
+  glGenFramebuffers(1, &shadow_map_framebuffer_);
+
   GenerateGlobalUBO();
   GenerateProgram();
 }
@@ -77,6 +90,9 @@ void RenderSystem::GenerateProgram() {
   printf("Generating Program...\n");
   base_program_ =
       Program("./engine/shaders/shader.vert", "./engine/shaders/gaussian.frag");
+  shadow_map_program_ = Program("./engine/shaders/shadow_mapping.vert",
+                                "./engine/shaders/shadow_mapping.frag",
+                                "./engine/shaders/shadow_mapping.geom");
   printf("Program Generated\n");
 }
 
@@ -162,18 +178,23 @@ void RenderSystem::Draw() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glm::mat4 camera_matrix = GetCameraMatrix();
   auto &coordinator = GetApplication().GetCoordinator();
+  auto objects = coordinator.GetEntities<WE::ECS::Components::MeshRenderer,
+                                         WE::ECS::Components::Transform,
+                                         WE::ECS::Components::Material>();
+  auto lights = coordinator.GetEntities<WE::ECS::Components::PointLight>();
+
+  auto t1 = std::chrono::high_resolution_clock::now();
+  RenderShadowMaps(lights, objects);
+  auto t2 = std::chrono::high_resolution_clock::now();
 
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D,
                 GetApplication().GetTextureManager().GetGaussianTermTexture());
   base_program_.UseProgram();
   glUniform1f(kShininess, 1.0f);
+  glUniform1f(kFarPlaneUniformLocation, 200.0f);
   BindDirectionalLight();
-  BindPointLights();
-  auto objects =
-      coordinator
-          .GetEntities<ECS::Components::MeshRenderer,
-                       ECS::Components::Transform, ECS::Components::Material>();
+  BindPointLights(lights);
 
   for (auto &object : objects) {
 
@@ -190,8 +211,117 @@ void RenderSystem::Draw() {
     glBindTexture(GL_TEXTURE_2D, 0);
   }
   base_program_.FreeProgram();
-
+  auto t3 = std::chrono::high_resolution_clock::now();
+  auto shadow_pass_duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+  auto render_pass_duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2);
+  printf("Shadow pass: %lld microseconds\nRender pass: %lld "
+         "microseconds\n",
+         shadow_pass_duration.count(), render_pass_duration.count());
   glfwSwapBuffers(GetApplication().GetWindow());
+}
+
+void RenderSystem::RenderShadowMaps(
+    const std::vector<WE::ECS::Entity> &light_entities,
+    const std::vector<WE::ECS::Entity> &object_entites) {
+
+  shadow_map_program_.UseProgram();
+
+  uint8_t maps_amount = std::min(light_entities.size(), (size_t)8);
+
+  float aspect = (float)kShadowMapWidth / (float)kShadowMapHeight;
+  float z_near = 0.01f;
+  float z_far = 200.0f;
+  glUniform1f(kFarPlaneUniformLocation, z_far);
+  glm::mat4 shadow_projection =
+      glm::perspective(glm::radians(90.0f), aspect, z_near, z_far);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, shadow_map_framebuffer_);
+  glDrawBuffer(GL_NONE);
+  glReadBuffer(GL_NONE);
+
+  auto &coordinator = GetApplication().GetCoordinator();
+
+  for (uint8_t i = 0; i < maps_amount; i++) {
+
+    auto &light = coordinator.GetComponent<WE::ECS::Components::PointLight>(
+        light_entities[i]);
+    if (light.shadow_map == 0) {
+      glGenTextures(1, &light.shadow_map);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, light.shadow_map);
+      for (uint8_t k = 0; k < 6; k++) {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + k, 0, GL_DEPTH_COMPONENT,
+                     kShadowMapWidth, kShadowMapHeight, 0, GL_DEPTH_COMPONENT,
+                     GL_FLOAT, NULL);
+      }
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    }
+    glBindTexture(GL_TEXTURE_CUBE_MAP, light.shadow_map);
+    glUniform3fv(kLightPositionUniformLocation, 1,
+                 glm::value_ptr(light.position));
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, light.shadow_map,
+                         0);
+
+    glViewport(0, 0, kShadowMapWidth, kShadowMapHeight);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    std::array<glm::mat4, 6> shadow_transforms;
+    shadow_transforms[0] =
+        shadow_projection *
+        glm::lookAt(light.position,
+                    light.position + glm::vec3(1.0f, 0.0f, 0.0f),
+                    glm::vec3(0.0f, -1.0f, 0.0f));
+    shadow_transforms[1] =
+        shadow_projection *
+        glm::lookAt(light.position,
+                    light.position + glm::vec3(-1.0f, 0.0f, 0.0f),
+                    glm::vec3(0.0f, -1.0f, 0.0f));
+    shadow_transforms[2] =
+        shadow_projection *
+        glm::lookAt(light.position,
+                    light.position + glm::vec3(0.0f, 1.0f, 0.0f),
+                    glm::vec3(0.0f, 0.0f, 1.0f));
+    shadow_transforms[3] =
+        shadow_projection *
+        glm::lookAt(light.position,
+                    light.position + glm::vec3(0.0f, -1.0f, 0.0f),
+                    glm::vec3(0.0f, 0.0f, -1.0f));
+    shadow_transforms[4] =
+        shadow_projection *
+        glm::lookAt(light.position,
+                    light.position + glm::vec3(0.0f, 0.0f, 1.0f),
+                    glm::vec3(0.0f, -1.0f, 0.0f));
+    shadow_transforms[5] =
+        shadow_projection *
+        glm::lookAt(light.position,
+                    light.position + glm::vec3(0.0f, 0.0f, -1.0f),
+                    glm::vec3(0.0f, -1.0f, 0.0f));
+
+    glUniformMatrix4fv(kShadowMatricesUniformLocation, 6, GL_FALSE,
+                       glm::value_ptr(shadow_transforms[0]));
+
+    for (auto object : object_entites) {
+      auto &transform =
+          coordinator.GetComponent<WE::ECS::Components::Transform>(object);
+      auto &mesh_renderer =
+          coordinator.GetComponent<WE::ECS::Components::MeshRenderer>(object);
+
+      glm::mat4 model_world_matrix =
+          glm::translate(glm::mat4(1.0f), transform.position) *
+          glm::mat4_cast(transform.rotation) *
+          glm::scale(glm::mat4(1.0f), transform.scale);
+      glUniformMatrix4fv(kModelWorldSpaceUniformLocation, 1, GL_FALSE,
+                         glm::value_ptr(model_world_matrix));
+      DrawMesh(mesh_renderer.mesh_id);
+    }
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, viewport_width_, viewport_height_);
+  shadow_map_program_.FreeProgram();
 }
 
 void RenderSystem::BindDirectionalLight() {
@@ -221,10 +351,9 @@ void RenderSystem::BindDirectionalLight() {
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-void RenderSystem::BindPointLights() {
+void RenderSystem::BindPointLights(std::vector<WE::ECS::Entity> &lights) {
   auto &coordinator = GetApplication().GetCoordinator();
-  auto point_lights = coordinator.GetEntities<ECS::Components::PointLight>();
-  auto lights_amount = std::min(point_lights.size(), (size_t)8);
+  auto lights_amount = std::min(lights.size(), (size_t)8);
   glUniform1i(kAmountOfPointLights, lights_amount);
 
   glm::mat4 camera_matrix = GetCameraMatrix();
@@ -232,11 +361,13 @@ void RenderSystem::BindPointLights() {
   glBindBuffer(GL_UNIFORM_BUFFER, point_light_global_UBO_);
   for (int i = 0; i < lights_amount; i++) {
     auto point_light =
-        coordinator.GetComponent<ECS::Components::PointLight>(point_lights[i]);
+        coordinator.GetComponent<ECS::Components::PointLight>(lights[i]);
     point_light.position =
         camera_matrix * glm::vec4(point_light.position, 1.0f);
     glBufferSubData(GL_UNIFORM_BUFFER, sizeof(ECS::Components::PointLight) * i,
                     sizeof(ECS::Components::PointLight), &point_light);
+    glActiveTexture(GL_TEXTURE3 + i);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, point_light.shadow_map);
   }
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
@@ -251,11 +382,15 @@ void RenderSystem::BindUniforms(ECS::Components::Transform &transform,
 
   glm::mat3 model_camera_normal_matrix =
       glm::transpose(glm::inverse(glm::mat3(model_camera_matrix)));
+  glm::mat3 camera_to_world_rotation_matrix =
+      glm::inverse(glm::mat3(camera_matrix));
 
   glUniformMatrix4fv(kModelCameraUniformLocation, 1, GL_FALSE,
                      glm::value_ptr(model_camera_matrix));
   glUniformMatrix3fv(kModelCameraNormalUniformLocation, 1, GL_FALSE,
                      glm::value_ptr(model_camera_normal_matrix));
+  glUniformMatrix3fv(kCameraToWorldRotationMatrixUniformLocation, 1, GL_FALSE,
+                     glm::value_ptr(camera_to_world_rotation_matrix));
 }
 
 void RenderSystem::BindTextures(ECS::Components::Material &material) {

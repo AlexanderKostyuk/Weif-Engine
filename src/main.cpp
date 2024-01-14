@@ -60,7 +60,7 @@ void InitEntities() {
   auto &coordinator = application.GetCoordinator();
   auto cube = coordinator.CreateEntity();
   coordinator.AddComponent(cube, WE::ECS::Components::Transform{
-                                     .position = glm::vec3(2.0f, 0.0f, -5.0f)});
+                                     .position = glm::vec3(3.0f, 0.0f, -5.0f)});
   coordinator.AddComponent(
       cube, WE::ECS::Components::MeshRenderer{.mesh_id = g_cube_mesh});
   coordinator.AddComponent(cube, WE::ECS::Components::Material{});
@@ -68,7 +68,7 @@ void InitEntities() {
   auto smooth_cube = coordinator.CreateEntity();
   coordinator.AddComponent(smooth_cube,
                            WE::ECS::Components::Transform{
-                               .position = glm::vec3(-2.0f, 0.0f, -5.0f)});
+                               .position = glm::vec3(-3.0f, 0.0f, -5.0f)});
   coordinator.AddComponent(
       smooth_cube, WE::ECS::Components::MeshRenderer{.mesh_id = g_sphere_mesh});
   coordinator.AddComponent(smooth_cube, WE::ECS::Components::Material{});
@@ -77,7 +77,7 @@ void InitEntities() {
   coordinator.AddComponent(plane,
                            WE::ECS::Components::Transform{
                                .position = glm::vec3(0.0f, -1.0f, -5.0f),
-                               .scale = glm::vec3(10.0f, 10.0f, 1.0f),
+                               .scale = glm::vec3(20.0f, 20.0f, 1.0f),
                                .rotation = glm::vec3(-1.556f, 0.0f, 0.0f)});
   coordinator.AddComponent(
       plane, WE::ECS::Components::MeshRenderer{.mesh_id = g_plane_mesh});

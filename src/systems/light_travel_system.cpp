@@ -14,8 +14,8 @@ namespace Demo::Systems {
 glm::vec3 LightTravelSystem::CalculatePosition(
     const Demo::Components::TravelingLight &traveling_light) {
   glm::vec3 position = traveling_light.start_position;
-  position.x += sin(traveling_light.current_time) * 4;
-  position.z += sin(traveling_light.current_time * 2) * 2;
+  position.x += sin(traveling_light.current_time) * 8;
+  position.z += sin(traveling_light.current_time * 2) * 4;
   return position;
 }
 
@@ -43,15 +43,7 @@ void LightTravelSystem::ProcessInput(float delta_time) {
   auto &input_manager = GetApplication().GetInputManager();
   float speed_change = input_manager.GetKeyState(GLFW_KEY_RIGHT) -
                        input_manager.GetKeyState(GLFW_KEY_LEFT);
-  if (speed_change != 0) {
-    input_timer_ += delta_time;
-    while (input_timer_ >= input_delay_) {
-      input_timer_ -= input_delay_;
-      speed_ += speed_change * speed_change_speed_;
-    }
-  } else {
-    input_timer_ = 0;
-  }
+  speed_ += speed_change * speed_change_speed_ * delta_time;
 }
 
 } // namespace Demo::Systems

@@ -13,7 +13,7 @@ struct PointLight {
   glm::vec4 diffuse = glm::vec4(0.4f, 0.4f, 0.4f, 1.0f);
   glm::vec4 specular = glm::vec4(0.4f, 0.4f, 0.4f, 1.0f);
   glm::vec3 intensity = glm::vec3(1.0f, 0.045f, 0.0075f);
-  float _padding1_;
+  uint32_t shadow_map = 0;
 };
 } // namespace WE::ECS::Components
 

@@ -9,6 +9,7 @@
 #include "ECS/components/directional_light.h"
 #include "ECS/components/material.h"
 #include "ECS/components/transform.h"
+#include "ECS/entity_manager.h"
 #include "ECS/i_system.h"
 #include "render/model_manager.h"
 #include "render/program.h"
@@ -22,8 +23,10 @@ private:
   void UpdatePerspectiveMatrix();
   void Draw();
   void DrawMesh(MeshId mesh_id);
+  void RenderShadowMaps(const std::vector<WE::ECS::Entity> &light_entities,
+                        const std::vector<WE::ECS::Entity> &object_entities);
   void BindDirectionalLight();
-  void BindPointLights();
+  void BindPointLights(std::vector<WE::ECS::Entity> &lights);
 
   void BindUniforms(ECS::Components::Transform &transform,
                     glm::mat4 &camera_matrix);
@@ -47,6 +50,9 @@ private:
   GLfloat z_far_ = 100.0f;
 
   Program base_program_;
+  Program shadow_map_program_;
+
+  GLuint shadow_map_framebuffer_;
 
   GLuint projection_global_UBO_;
   GLuint directional_light_global_UBO_;
