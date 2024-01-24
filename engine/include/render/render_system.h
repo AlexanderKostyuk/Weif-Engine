@@ -25,6 +25,9 @@ private:
   void DrawMesh(MeshId mesh_id);
   void RenderShadowMaps(const std::vector<WE::ECS::Entity> &light_entities,
                         const std::vector<WE::ECS::Entity> &object_entities);
+  void RenderShadowMapsDirectionalLight(
+      const std::vector<WE::ECS::Entity> &directional_light_entities,
+      const std::vector<WE::ECS::Entity> &object_entities);
   void BindDirectionalLight();
   void BindPointLights(std::vector<WE::ECS::Entity> &lights);
 
@@ -51,6 +54,7 @@ private:
 
   Program base_program_;
   Program shadow_map_program_;
+  Program shadow_map_directional_program_;
 
   GLuint shadow_map_framebuffer_;
 

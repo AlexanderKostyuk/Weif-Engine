@@ -9,6 +9,8 @@
 #include <vector>
 namespace WE::ECS {
 
+using EntityArray = std::vector<Entity>;
+
 class Coordinator {
 
 public:
@@ -58,8 +60,8 @@ public:
     return GetEntities(components_signature);
   }
 
-  inline std::vector<Entity> GetEntities(Signature components_signature) const {
-    std::vector<Entity> entities{};
+  inline EntityArray GetEntities(Signature components_signature) const {
+    EntityArray entities{};
     entities.reserve(entity_manager->GetLastEntity() + 1);
     for (Entity entity = 0; entity <= entity_manager->GetLastEntity();
          entity++) {

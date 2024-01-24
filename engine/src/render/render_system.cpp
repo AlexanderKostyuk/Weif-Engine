@@ -2,6 +2,7 @@
 
 #include "ECS/entity_manager.h"
 #include "glm/ext/matrix_clip_space.hpp"
+#include "render/lighting/light_info.h"
 #include "stb_image.h"
 #include <algorithm>
 #include <chrono>
@@ -43,23 +44,27 @@ const GLuint kProjectionUniformBlockIndex = 0;
 const GLuint kDirectionalLightUniformBlockIndex = 1;
 const GLuint kPointLightsUniformBlockIndex = 2;
 
-const GLuint kModelCameraUniformLocation = 1;
-const GLuint kModelCameraNormalUniformLocation = 2;
+// General pass locations
+const GLuint kModelWorldTransformLocation = 1;
+const GLuint kModelCameraNormalTransformLocation = 2;
 
-const GLuint kModelWorldSpaceUniformLocation = 1;
-const GLuint kShadowMatricesUniformLocation = 2;
-const GLuint kLightPositionUniformLocation = 8;
-const GLuint kFarPlaneUniformLocation = 9;
+const GLuint kDirectionalLightExistsLocation = 8;
+const GLuint kDirectionalLightCameraSpaceDirectionLocation = 9;
 
-const GLuint kDirectionalLightDirection = 128;
-const GLuint kDirectionalLightAmbient = 129;
-const GLuint kDirectionalLightDiffuse = 130;
-const GLuint kDirectionalLightSpecular = 131;
-const GLuint kDirectionalLightExists = 132;
-const GLuint kShininess = 133;
-const GLuint kAmountOfPointLights = 134;
-const GLuint kCameraToWorldRotationMatrixUniformLocation = 135;
+const GLuint kAmountOfPointLightsLocation = 14;
+const GLuint kPointLightPositionLocation = 15;
+const GLuint kFarPlaneLocation = 23;
 
+const GLenum kDirectionalShadowMapBinding = GL_TEXTURE0;
+const GLenum kPointShadowMapBinding = GL_TEXTURE0 + 1;
+const GLenum kGaussianTextureBinding = GL_TEXTURE0 + 9;
+const GLenum kDiffuseTextureBinding = GL_TEXTURE0 + 10;
+const GLenum kSpecularTextureBinding = GL_TEXTURE0 + 11;
+
+// Shadow pass locations
+const GLuint kShadowMatricesLocation = 2;
+const GLuint kLightPositionLocation = 8;
+const GLuint kShadowPassFarPlaneLocation = 9;
 uint16_t kShadowMapWidth = 8192, kShadowMapHeight = 8192;
 
 } // namespace
@@ -90,9 +95,12 @@ void RenderSystem::GenerateProgram() {
   printf("Generating Program...\n");
   base_program_ =
       Program("./engine/shaders/shader.vert", "./engine/shaders/gaussian.frag");
-  shadow_map_program_ = Program("./engine/shaders/shadow_mapping.vert",
-                                "./engine/shaders/shadow_mapping.frag",
-                                "./engine/shaders/shadow_mapping.geom");
+  shadow_map_program_ = Program("./engine/shaders/shadows/point_light.vert",
+                                "./engine/shaders/shadows/point_light.frag",
+                                "./engine/shaders/shadows/point_light.geom");
+  shadow_map_directional_program_ =
+      Program("./engine/shaders/shadows/directional_light.vert",
+              "./engine/shaders/shadows/directional_light.frag");
   printf("Program Generated\n");
 }
 
@@ -102,7 +110,8 @@ void RenderSystem::GenerateGlobalUBO() {
   // Projection Matrix UBO
   glGenBuffers(1, &projection_global_UBO_);
   glBindBuffer(GL_UNIFORM_BUFFER, projection_global_UBO_);
-  glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), nullptr, GL_STREAM_DRAW);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 3, nullptr,
+               GL_STREAM_DRAW);
 
   glm::mat4 perspective_matrix = glm::perspective(
       fov_, (float)viewport_width_ / (float)viewport_height_, z_near_, z_far_);
@@ -118,13 +127,13 @@ void RenderSystem::GenerateGlobalUBO() {
   // Directional Light UBO
   glGenBuffers(1, &directional_light_global_UBO_);
   glBindBuffer(GL_UNIFORM_BUFFER, directional_light_global_UBO_);
-  glBufferData(GL_UNIFORM_BUFFER, sizeof(ECS::Components::DirectionalLight) * 4,
-               nullptr, GL_STREAM_DRAW);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(WE::Render::LightInfo), nullptr,
+               GL_STREAM_DRAW);
 
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
   glBindBufferRange(GL_UNIFORM_BUFFER, kDirectionalLightUniformBlockIndex,
                     directional_light_global_UBO_, 0,
-                    sizeof(ECS::Components::DirectionalLight));
+                    sizeof(WE::Render::LightInfo));
   // Directional Light UBO END
 
   // Point Lights UBO
@@ -182,19 +191,27 @@ void RenderSystem::Draw() {
                                          WE::ECS::Components::Transform,
                                          WE::ECS::Components::Material>();
   auto lights = coordinator.GetEntities<WE::ECS::Components::PointLight>();
+  auto directional_lights =
+      coordinator.GetEntities<WE::ECS::Components::DirectionalLight>();
 
   auto t1 = std::chrono::high_resolution_clock::now();
+  RenderShadowMapsDirectionalLight(directional_lights, objects);
   RenderShadowMaps(lights, objects);
   auto t2 = std::chrono::high_resolution_clock::now();
 
-  glActiveTexture(GL_TEXTURE0);
+  glActiveTexture(kGaussianTextureBinding);
   glBindTexture(GL_TEXTURE_2D,
                 GetApplication().GetTextureManager().GetGaussianTermTexture());
   base_program_.UseProgram();
-  glUniform1f(kShininess, 1.0f);
-  glUniform1f(kFarPlaneUniformLocation, 200.0f);
+  glUniform1f(kFarPlaneLocation, 200.0f);
   BindDirectionalLight();
   BindPointLights(lights);
+
+  glBindBuffer(GL_UNIFORM_BUFFER, projection_global_UBO_);
+  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4),
+                  glm::value_ptr(camera_matrix));
+
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
   for (auto &object : objects) {
 
@@ -216,24 +233,137 @@ void RenderSystem::Draw() {
       std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
   auto render_pass_duration =
       std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2);
-  printf("Shadow pass: %lld microseconds\nRender pass: %lld "
-         "microseconds\n",
-         shadow_pass_duration.count(), render_pass_duration.count());
+  // printf("Shadow pass: %lld microseconds\nRender pass: %lld "
+  //        "microseconds\n",
+  //        shadow_pass_duration.count(), render_pass_duration.count());
   glfwSwapBuffers(GetApplication().GetWindow());
 }
 
+void RenderSystem::RenderShadowMapsDirectionalLight(
+    const WE::ECS::EntityArray &directional_light_entities,
+    const WE::ECS::EntityArray &object_entities) {
+
+  auto &coordinator = GetApplication().GetCoordinator();
+  auto &camera = GetApplication().GetCamera();
+
+  shadow_map_directional_program_.UseProgram();
+
+  glViewport(0, 0, kShadowMapWidth, kShadowMapHeight);
+  glBindFramebuffer(GL_FRAMEBUFFER, shadow_map_framebuffer_);
+  glDrawBuffer(GL_NONE);
+  glReadBuffer(GL_NONE);
+
+  glm::mat4 light_projection =
+      glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, -20.0f, 20.0f);
+
+  for (auto light_entity : directional_light_entities) {
+
+    auto &directional_light =
+        coordinator.GetComponent<WE::ECS::Components::DirectionalLight>(
+            light_entity);
+    glm::mat4 light_view =
+        light_projection * glm::lookAt(glm::vec3(0.0f),
+                                       directional_light.direction,
+                                       glm::vec3(0.0f, 1.0f, 0.0f));
+    glBindBuffer(GL_UNIFORM_BUFFER, projection_global_UBO_);
+    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2, sizeof(glm::mat4),
+                    glm::value_ptr(light_view));
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    if (directional_light.shadow_map == 0) {
+      glGenTextures(1, &directional_light.shadow_map);
+      glBindTexture(GL_TEXTURE_2D, directional_light.shadow_map);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, kShadowMapWidth,
+                   kShadowMapHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    } else {
+      glBindTexture(GL_TEXTURE_2D, directional_light.shadow_map);
+    }
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                           directional_light.shadow_map, 0);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    for (auto object_entity : object_entities) {
+      auto &transform =
+          coordinator.GetComponent<WE::ECS::Components::Transform>(
+              object_entity);
+      auto &mesh_renderer =
+          coordinator.GetComponent<WE::ECS::Components::MeshRenderer>(
+              object_entity);
+      glm::mat4 model_world_transform =
+          glm::translate(glm::mat4(1.0f), transform.position) *
+          glm::mat4_cast(transform.rotation) *
+          glm::scale(glm::mat4(1.0f), transform.scale);
+
+      glUniformMatrix4fv(kModelWorldTransformLocation, 1, GL_FALSE,
+                         glm::value_ptr(model_world_transform));
+
+      DrawMesh(mesh_renderer.mesh_id);
+    }
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, viewport_width_, viewport_height_);
+  shadow_map_directional_program_.FreeProgram();
+}
+
+void RenderSystem::BindDirectionalLight() {
+
+  auto &coordinator = GetApplication().GetCoordinator();
+  auto &camera = GetApplication().GetCamera();
+  auto directional_lights =
+      coordinator.GetEntities<ECS::Components::DirectionalLight>();
+
+  if (directional_lights.size() <= 0) {
+    glUniform1i(kDirectionalLightExistsLocation, 0);
+    return;
+  } else {
+    glUniform1i(kDirectionalLightExistsLocation, 1);
+  }
+
+  auto directional_light =
+      coordinator.GetComponent<ECS::Components::DirectionalLight>(
+          directional_lights[0]);
+
+  glm::mat4 light_projection =
+      glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, -20.0f, 20.0f);
+
+  glm::mat4 light_view =
+      light_projection * glm::lookAt(glm::vec3(0.0f),
+                                     directional_light.direction,
+                                     glm::vec3(0.0f, 1.0f, 0.0f));
+  glBindBuffer(GL_UNIFORM_BUFFER, projection_global_UBO_);
+  glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2, sizeof(glm::mat4),
+                  glm::value_ptr(light_view));
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+  directional_light.direction =
+      glm::mat3(GetCameraMatrix()) * directional_light.direction;
+  glUniform3fv(kDirectionalLightCameraSpaceDirectionLocation, 1,
+               glm::value_ptr(directional_light.direction));
+
+  glActiveTexture(kDirectionalShadowMapBinding);
+  glBindTexture(GL_TEXTURE_2D, directional_light.shadow_map);
+
+  glBindBuffer(GL_UNIFORM_BUFFER, directional_light_global_UBO_);
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(WE::Render::LightInfo),
+                  glm::value_ptr(directional_light.ambient));
+  glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
 void RenderSystem::RenderShadowMaps(
-    const std::vector<WE::ECS::Entity> &light_entities,
-    const std::vector<WE::ECS::Entity> &object_entites) {
+    const WE::ECS::EntityArray &light_entities,
+    const WE::ECS::EntityArray &object_entites) {
 
   shadow_map_program_.UseProgram();
-
-  uint8_t maps_amount = std::min(light_entities.size(), (size_t)8);
 
   float aspect = (float)kShadowMapWidth / (float)kShadowMapHeight;
   float z_near = 0.01f;
   float z_far = 200.0f;
-  glUniform1f(kFarPlaneUniformLocation, z_far);
+  glUniform1f(kShadowPassFarPlaneLocation, z_far);
+
   glm::mat4 shadow_projection =
       glm::perspective(glm::radians(90.0f), aspect, z_near, z_far);
 
@@ -243,10 +373,10 @@ void RenderSystem::RenderShadowMaps(
 
   auto &coordinator = GetApplication().GetCoordinator();
 
-  for (uint8_t i = 0; i < maps_amount; i++) {
+  for (auto entity : light_entities) {
 
-    auto &light = coordinator.GetComponent<WE::ECS::Components::PointLight>(
-        light_entities[i]);
+    auto &light =
+        coordinator.GetComponent<WE::ECS::Components::PointLight>(entity);
     if (light.shadow_map == 0) {
       glGenTextures(1, &light.shadow_map);
       glBindTexture(GL_TEXTURE_CUBE_MAP, light.shadow_map);
@@ -261,9 +391,9 @@ void RenderSystem::RenderShadowMaps(
       glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
       glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     }
+
     glBindTexture(GL_TEXTURE_CUBE_MAP, light.shadow_map);
-    glUniform3fv(kLightPositionUniformLocation, 1,
-                 glm::value_ptr(light.position));
+    glUniform3fv(kLightPositionLocation, 1, glm::value_ptr(light.position));
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, light.shadow_map,
                          0);
 
@@ -301,7 +431,7 @@ void RenderSystem::RenderShadowMaps(
                     light.position + glm::vec3(0.0f, 0.0f, -1.0f),
                     glm::vec3(0.0f, -1.0f, 0.0f));
 
-    glUniformMatrix4fv(kShadowMatricesUniformLocation, 6, GL_FALSE,
+    glUniformMatrix4fv(kShadowMatricesLocation, 6, GL_FALSE,
                        glm::value_ptr(shadow_transforms[0]));
 
     for (auto object : object_entites) {
@@ -310,12 +440,12 @@ void RenderSystem::RenderShadowMaps(
       auto &mesh_renderer =
           coordinator.GetComponent<WE::ECS::Components::MeshRenderer>(object);
 
-      glm::mat4 model_world_matrix =
+      glm::mat4 model_world_transform =
           glm::translate(glm::mat4(1.0f), transform.position) *
           glm::mat4_cast(transform.rotation) *
           glm::scale(glm::mat4(1.0f), transform.scale);
-      glUniformMatrix4fv(kModelWorldSpaceUniformLocation, 1, GL_FALSE,
-                         glm::value_ptr(model_world_matrix));
+      glUniformMatrix4fv(kModelWorldTransformLocation, 1, GL_FALSE,
+                         glm::value_ptr(model_world_transform));
       DrawMesh(mesh_renderer.mesh_id);
     }
   }
@@ -324,49 +454,26 @@ void RenderSystem::RenderShadowMaps(
   shadow_map_program_.FreeProgram();
 }
 
-void RenderSystem::BindDirectionalLight() {
-
-  auto &coordinator = GetApplication().GetCoordinator();
-  auto directional_lights =
-      coordinator.GetEntities<ECS::Components::DirectionalLight>();
-
-  if (directional_lights.size() <= 0) {
-    glUniform1i(kDirectionalLightExists, 0);
-    return;
-  } else {
-    glUniform1i(kDirectionalLightExists, 1);
-  }
-
-  auto directional_light =
-      coordinator.GetComponent<ECS::Components::DirectionalLight>(
-          directional_lights[0]);
-
-  directional_light.direction =
-      glm::mat3(GetCameraMatrix()) * directional_light.direction;
-
-  glBindBuffer(GL_UNIFORM_BUFFER, directional_light_global_UBO_);
-  glBufferSubData(GL_UNIFORM_BUFFER, 0,
-                  sizeof(ECS::Components::DirectionalLight),
-                  &directional_light);
-  glBindBuffer(GL_UNIFORM_BUFFER, 0);
-}
-
-void RenderSystem::BindPointLights(std::vector<WE::ECS::Entity> &lights) {
+void RenderSystem::BindPointLights(WE::ECS::EntityArray &lights) {
   auto &coordinator = GetApplication().GetCoordinator();
   auto lights_amount = std::min(lights.size(), (size_t)8);
-  glUniform1i(kAmountOfPointLights, lights_amount);
+  glUniform1i(kAmountOfPointLightsLocation, lights_amount);
 
-  glm::mat4 camera_matrix = GetCameraMatrix();
+  auto world_camera_transform = GetCameraMatrix();
 
   glBindBuffer(GL_UNIFORM_BUFFER, point_light_global_UBO_);
   for (int i = 0; i < lights_amount; i++) {
     auto point_light =
         coordinator.GetComponent<ECS::Components::PointLight>(lights[i]);
+    glUniform3fv(kPointLightPositionLocation + i, 1,
+                 glm::value_ptr(point_light.position));
+
     point_light.position =
-        camera_matrix * glm::vec4(point_light.position, 1.0f);
+        world_camera_transform * glm::vec4(point_light.position, 1.0f);
+
     glBufferSubData(GL_UNIFORM_BUFFER, sizeof(ECS::Components::PointLight) * i,
                     sizeof(ECS::Components::PointLight), &point_light);
-    glActiveTexture(GL_TEXTURE3 + i);
+    glActiveTexture(kPointShadowMapBinding + i);
     glBindTexture(GL_TEXTURE_CUBE_MAP, point_light.shadow_map);
   }
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -375,22 +482,17 @@ void RenderSystem::BindPointLights(std::vector<WE::ECS::Entity> &lights) {
 void RenderSystem::BindUniforms(ECS::Components::Transform &transform,
                                 glm::mat4 &camera_matrix) {
 
-  glm::mat4 model_camera_matrix =
-      camera_matrix * glm::translate(glm::mat4(1.0f), transform.position) *
-      glm::mat4_cast(transform.rotation) *
-      glm::scale(glm::mat4(1.0f), transform.scale);
+  glm::mat4 model_matrix = glm::translate(glm::mat4(1.0f), transform.position) *
+                           glm::mat4_cast(transform.rotation) *
+                           glm::scale(glm::mat4(1.0f), transform.scale);
 
   glm::mat3 model_camera_normal_matrix =
-      glm::transpose(glm::inverse(glm::mat3(model_camera_matrix)));
-  glm::mat3 camera_to_world_rotation_matrix =
-      glm::inverse(glm::mat3(camera_matrix));
+      glm::transpose(glm::inverse(glm::mat3(camera_matrix * model_matrix)));
 
-  glUniformMatrix4fv(kModelCameraUniformLocation, 1, GL_FALSE,
-                     glm::value_ptr(model_camera_matrix));
-  glUniformMatrix3fv(kModelCameraNormalUniformLocation, 1, GL_FALSE,
+  glUniformMatrix4fv(kModelWorldTransformLocation, 1, GL_FALSE,
+                     glm::value_ptr(model_matrix));
+  glUniformMatrix3fv(kModelCameraNormalTransformLocation, 1, GL_FALSE,
                      glm::value_ptr(model_camera_normal_matrix));
-  glUniformMatrix3fv(kCameraToWorldRotationMatrixUniformLocation, 1, GL_FALSE,
-                     glm::value_ptr(camera_to_world_rotation_matrix));
 }
 
 void RenderSystem::BindTextures(ECS::Components::Material &material) {
@@ -404,10 +506,10 @@ void RenderSystem::BindTextures(ECS::Components::Material &material) {
       material.specular_texture_id == 0
           ? texture_manager.GetDefaultSpecularTexture()
           : texture_manager.GetTexture(material.specular_texture_id);
-  glActiveTexture(GL_TEXTURE1);
+  glActiveTexture(kDiffuseTextureBinding);
   glBindTexture(GL_TEXTURE_2D, diffuse_texture);
 
-  glActiveTexture(GL_TEXTURE2);
+  glActiveTexture(kSpecularTextureBinding);
   glBindTexture(GL_TEXTURE_2D, specular_texture);
 }
 
