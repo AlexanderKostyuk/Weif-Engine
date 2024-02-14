@@ -4,14 +4,11 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glm/common.hpp>
-#include <memory>
 
 #include "ECS/coordinator.h"
+#include "application_window.h"
 #include "input/input_manager.h"
-#include "render/camera.h"
-#include "render/model_manager.h"
-#include "render/render_system.h"
-#include "render/texture_manager.h"
+#include "render/i_pipeline.h"
 namespace WE {
 
 class Application {
@@ -26,22 +23,32 @@ private:
   void InitSystems();
 
 public:
-  Application();
-  Application(int window_width, int window_height);
+  Application() = delete;
+  Application(Render::IPipeline &pipeline) : Application(pipeline, 800, 600) {}
+  Application(Render::IPipeline &pipeline, int window_width, int window_height);
 
   void Start();
-  void SetWindowSize(GLuint width, GLuint height);
 
-  inline GLFWwindow *GetWindow() { return window_; }
-
+  inline ApplicationWindow &GetWindow() { return application_window_; }
+  inline Render::IPipeline &GetPipeline() { return pipeline_; }
   inline ECS::Coordinator &GetCoordinator() { return coordinator_; }
   inline Input::InputManager &GetInputManager() { return input_manager_; }
-  inline Render::ModelManager &GetModelManager() { return model_manager_; }
-  inline Render::TextureManager &GetTextureManager() {
-    return texture_manager_;
-  }
 
-  inline Render::Camera &GetCamera() { return camera_; }
+  inline void SetWindowSize(int width, int height) {
+    GetWindow().SetWindowSize(width, height);
+  }
+  inline void WindowResizeCallback(int width, int height) {
+    GetPipeline().SetViewportSize(width, height);
+  }
+  inline void KeyCallback(Input::Key key, Input::KeyState key_state) {
+    GetInputManager().SetKeyState(key, key_state);
+  }
+  inline void CursorPositionCallback(glm::vec2 mouse_position) {
+    GetInputManager().SetMousePosition(mouse_position);
+  }
+  inline void MouseButtonCallback(Input::Key key, Input::KeyState key_state) {
+    GetInputManager().SetMouseKeyState(key, key_state);
+  }
 
   Application(Application &&other) = default;
   Application &operator=(Application &&other) = delete;
@@ -50,18 +57,12 @@ public:
   Application &operator=(const Application &) = delete;
 
 private:
-  int window_width_;
-  int window_height_;
-  GLFWwindow *window_;
-  float delta_time_;
+  float delta_time_ = 0.0f;
   ECS::Coordinator coordinator_;
 
   Input::InputManager input_manager_;
-  Render::ModelManager model_manager_;
-  Render::TextureManager texture_manager_;
-  Render::Camera camera_;
-
-  std::shared_ptr<Render::RenderSystem> render_system_;
+  Render::IPipeline &pipeline_;
+  ApplicationWindow application_window_;
 };
 
 } // namespace WE

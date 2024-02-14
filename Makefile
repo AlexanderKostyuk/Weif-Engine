@@ -33,7 +33,7 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 CXX := g++
 CC := gcc
 CPPFLAGS := $(INC_FLAGS) -MMD -MP 
-CXXFLAGS := -std=c++17 -g3 -O0 -xc++
+CXXFLAGS := -std=c++17 -ggdb3 -O0 -xc++
 
 $(BUILD_DIR)$(PATH_SEPARATOR)$(TARGET_EXEC): $(OBJS)
 	$(CXX) $(OBJS) -o $@ $(LDFLAGS) 

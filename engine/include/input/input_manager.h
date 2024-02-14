@@ -1,6 +1,7 @@
 #ifndef WE_INPUT_INPUT_MANAGER_H
 #define WE_INPUT_INPUT_MANAGER_H
 
+#include "application_window.h"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -8,7 +9,7 @@
 
 namespace WE {
 class Application;
-}
+} // namespace WE
 
 namespace WE::Input {
 
@@ -36,7 +37,7 @@ public:
   inline glm::vec2 GetMousePosition() { return mouse_position_; }
   inline glm::vec2 GetMouseMovement() { return mouse_movement_; }
 
-  inline bool IsCursorLocked() { return cursor_locked_; }
+  bool IsCursorLocked();
 
   InputManager(InputManager &&other) = default;
   InputManager &operator=(InputManager &&other) = delete;
@@ -53,7 +54,6 @@ private:
   glm::vec2 real_mouse_position_{};
   glm::vec2 mouse_movement_{};
 
-  bool cursor_locked_ = false;
   Application &application_;
 };
 

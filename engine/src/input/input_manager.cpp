@@ -13,14 +13,13 @@ void InputManager::SetMousePosition(glm::vec2 &new_mouse_position) {
 }
 
 void InputManager::LockCursor() {
-  cursor_locked_ = true;
-  glfwSetInputMode(application_.GetWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+  application_.GetWindow().LockCursor();
   mouse_movement_ = glm::vec2(0.0f);
 }
 
-void InputManager::UnlockCursor() {
-  cursor_locked_ = false;
-  glfwSetInputMode(application_.GetWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+void InputManager::UnlockCursor() { application_.GetWindow().UnlockCursor(); }
+bool InputManager::IsCursorLocked() {
+  return application_.GetWindow().IsCursorLocked();
 }
 
 void InputManager::CleanMovement() { mouse_movement_ = glm::vec2(0.0f); }

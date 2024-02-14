@@ -22,7 +22,6 @@ glm::vec3 LightTravelSystem::CalculatePosition(
 void LightTravelSystem::Update(float delta_time) {
 
   auto &coordinator = GetApplication().GetCoordinator();
-
   auto entities = coordinator.GetEntities<WE::ECS::Components::PointLight,
                                           Demo::Components::TravelingLight>();
 
@@ -33,7 +32,8 @@ void LightTravelSystem::Update(float delta_time) {
         coordinator.GetComponent<WE::ECS::Components::PointLight>(entity);
     traveling_light.current_time += delta_time * speed_ * traveling_light.speed;
     while (traveling_light.current_time >= M_PI * 2.0f)
-      traveling_light.current_time -= M_PI * 2.0f;
+      traveling_light.current_time =
+          std::fmod(traveling_light.current_time, M_PI * 2.0f);
     point_light.position = CalculatePosition(traveling_light);
   }
   ProcessInput(delta_time);

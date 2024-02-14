@@ -1,11 +1,11 @@
-#ifndef WE_RENDER_PROGRAM_H
-#define WE_RENDER_PROGRAM_H
+#ifndef WE_RENDER_OPENGL_PROGRAM_H
+#define WE_RENDER_OPENGL_PROGRAM_H
 
 #include <GL/gl3w.h>
 #include <GL/glcorearb.h>
 #include <glm/glm.hpp>
 #include <string>
-namespace WE::Render {
+namespace WE::Render::Opengl {
 
 class Program {
 
@@ -31,6 +31,6 @@ private:
   GLuint gl_program_;
 };
 
-} // namespace WE::Render
+} // namespace WE::Render::Opengl
 
-#endif // !WE_RENDER_PROGRAM_H
+#endif // !WE_RENDER_OPENGL_PROGRAM_H

@@ -12,22 +12,22 @@
 #include "application.h"
 #include "components/traveling_light.h"
 #include "render/model_manager.h"
+#include "render/opengl/opengl_pipeline.h"
 #include "systems/camera_control_system.h"
 #include "systems/light_travel_system.h"
 
-WE::Application application;
-
-WE::Render::MeshId g_cube_mesh;
-WE::Render::MeshId g_sphere_mesh;
-WE::Render::MeshId g_plane_mesh;
+WE::Render::Opengl::OpenglPipeline pipeline;
+WE::Render::MeshId kCubeMesh;
+WE::Render::MeshId kSphereMesh;
+WE::Render::MeshId kPlaneMesh;
 
 void InitTextures() {}
 
 void InitModels() {
-  auto &model_manager = application.GetModelManager();
+  auto &model_manager = pipeline.GetModelManager();
 
-  g_cube_mesh = model_manager.LoadModelsFromFile("./assets/models/cube.obj")[0];
-  g_sphere_mesh =
+  kCubeMesh = model_manager.LoadModelsFromFile("./assets/models/cube.obj")[0];
+  kSphereMesh =
       model_manager.LoadModelsFromFile("./assets/models/sphere.obj")[0];
 
   std::vector<glm::vec3> plane_vertices{
@@ -41,28 +41,33 @@ void InitModels() {
                                   glm::vec2(1.0f, 1.0f), glm::vec2(0.0f, 1.0f)};
   std::vector<glm::uvec3> plane_indices{glm::uvec3(0, 1, 2),
                                         glm::uvec3(0, 2, 3)};
-  g_plane_mesh = model_manager.LoadModel(model_manager.GenerateModelFlatShading(
+  kPlaneMesh = model_manager.LoadModel(model_manager.GenerateModelFlatShading(
       plane_vertices, plane_uv, plane_indices));
 }
 
-void InitSystems() {
+void InitSystems(WE::Application &application) {
+  printf("Demo systems initialization...\n");
   auto &coordinator = application.GetCoordinator();
   coordinator.RegisterSystem<Demo::Systems::CameraControlSystem>(application);
   coordinator.RegisterSystem<Demo::Systems::LightTravelSystem>(application);
+  printf("Demo systems initialized.\n");
 }
 
-void InitComponents() {
+void InitComponents(WE::Application &application) {
+  printf("Demo components initialization...\n");
   auto &coordinator = application.GetCoordinator();
   coordinator.RegisterComponent<Demo::Components::TravelingLight>();
+  printf("Demo components initialized.\n");
 }
 
-void InitEntities() {
+void InitEntities(WE::Application &application) {
+  printf("Demo entities initialization...\n");
   auto &coordinator = application.GetCoordinator();
   auto cube = coordinator.CreateEntity();
   coordinator.AddComponent(cube, WE::ECS::Components::Transform{
                                      .position = glm::vec3(3.0f, 0.0f, -5.0f)});
   coordinator.AddComponent(
-      cube, WE::ECS::Components::MeshRenderer{.mesh_id = g_cube_mesh});
+      cube, WE::ECS::Components::MeshRenderer{.mesh_id = kCubeMesh});
   coordinator.AddComponent(cube, WE::ECS::Components::Material{});
 
   auto smooth_cube = coordinator.CreateEntity();
@@ -70,7 +75,7 @@ void InitEntities() {
                            WE::ECS::Components::Transform{
                                .position = glm::vec3(-3.0f, 0.0f, -5.0f)});
   coordinator.AddComponent(
-      smooth_cube, WE::ECS::Components::MeshRenderer{.mesh_id = g_sphere_mesh});
+      smooth_cube, WE::ECS::Components::MeshRenderer{.mesh_id = kSphereMesh});
   coordinator.AddComponent(smooth_cube, WE::ECS::Components::Material{});
 
   auto plane = coordinator.CreateEntity();
@@ -80,7 +85,7 @@ void InitEntities() {
                                .scale = glm::vec3(20.0f, 20.0f, 1.0f),
                                .rotation = glm::vec3(-1.556f, 0.0f, 0.0f)});
   coordinator.AddComponent(
-      plane, WE::ECS::Components::MeshRenderer{.mesh_id = g_plane_mesh});
+      plane, WE::ECS::Components::MeshRenderer{.mesh_id = kPlaneMesh});
   coordinator.AddComponent(plane, WE::ECS::Components::Material{});
 
   auto dir_light = coordinator.CreateEntity();
@@ -122,14 +127,17 @@ void InitEntities() {
                                .current_time = 1.5f * M_PI,
                                .start_position = glm::vec3(0.0f, 0.0f, -5.0f),
                                .speed = 1.5f});
+
+  printf("Demo entities initialized\n");
 }
 
 int main() {
+  WE::Application application(pipeline);
   InitTextures();
   InitModels();
-  InitComponents();
-  InitSystems();
-  InitEntities();
+  InitComponents(application);
+  InitSystems(application);
+  InitEntities(application);
 
   application.Start();
 }

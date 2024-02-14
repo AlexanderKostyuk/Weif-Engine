@@ -45,7 +45,7 @@ void CameraControlSystem::RotateCamera(float delta_time) {
   glm::quat pitch(glm::vec3(rotation.y, 0.0f, 0.0f));
   glm::quat yaw(glm::vec3(0.0f, rotation.x, 0.0f));
 
-  auto &camera = GetApplication().GetCamera();
+  auto &camera = GetApplication().GetPipeline().GetCamera();
   camera.rotation = camera.rotation * yaw;
   camera.rotation = pitch * camera.rotation;
 }
@@ -55,7 +55,7 @@ void CameraControlSystem::MoveCamera(float delta_time) {
   camera_movement.x = GetKey(GLFW_KEY_A) - GetKey(GLFW_KEY_D);
   camera_movement.z = GetKey(GLFW_KEY_W) - GetKey(GLFW_KEY_S);
 
-  auto &camera = GetApplication().GetCamera();
+  auto &camera = GetApplication().GetPipeline().GetCamera();
 
   camera_movement = camera_movement * camera.rotation;
   camera.position += camera_movement * delta_time * 5.0f;

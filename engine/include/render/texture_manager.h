@@ -4,6 +4,7 @@
 #include <GL/glcorearb.h>
 #include <cstdint>
 #include <cstdio>
+#include <stdexcept>
 #include <unordered_map>
 #include <vector>
 
@@ -25,6 +26,8 @@ public:
   void Init();
   TextureId LoadTexture(const char *texture_path);
   TextureId LoadTexture(const TextureRGBA &texture);
+  TextureId Create2DShadowMap(const uint16_t size);
+  TextureId CreateCubeShadowMap(const uint16_t size);
   void UnloadTexture(TextureId sprite_id);
 
   void SetTexParameter(TextureId sprite_id, GLenum parameter_name,
@@ -32,20 +35,20 @@ public:
   void SetTexParameter(TextureId sprite_id, GLenum parameter_name,
                        GLfloat parameter_value);
 
-  inline GLuint GetTexture(TextureId texture_id) {
+  inline GLuint GetTexture(TextureId texture_id) const {
     return textures.at(texture_id);
   }
 
-  inline GLuint GetGaussianTermTexture() {
-    return textures.at(gaussian_term_texture_id);
+  inline GLuint GetGaussianTermTextureId() const {
+    return gaussian_term_texture_id;
   }
 
-  inline GLuint GetDefaultDiffuseTexture() {
-    return textures.at(default_diffuse_texture_id);
+  inline GLuint GetDefaultDiffuseTextureId() const {
+    return default_diffuse_texture_id;
   }
 
-  inline GLuint GetDefaultSpecularTexture() {
-    return textures.at(default_specular_texture_id);
+  inline GLuint GetDefaultSpecularTextureId() const {
+    return default_specular_texture_id;
   }
 
   TextureManager(TextureManager &&other) = default;

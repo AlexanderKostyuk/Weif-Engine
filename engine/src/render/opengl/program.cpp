@@ -1,4 +1,4 @@
-#include <render/program.h>
+#include <render/opengl/program.h>
 
 #include <GL/gl3w.h>
 #include <glm/glm.hpp>
@@ -7,7 +7,7 @@
 
 #include "render/shader.h"
 
-namespace WE::Render {
+namespace WE::Render::Opengl {
 
 Program::Program(const char *vertex_shader_path,
                  const char *fragment_shader_path) {
@@ -23,6 +23,7 @@ Program::Program(const char *vertex_shader_path,
   glDetachShader(gl_program_, vertex_shader.GetShaderRef());
   glDetachShader(gl_program_, fragment_shader.GetShaderRef());
 }
+
 Program::Program(const char *vertex_shader_path,
                  const char *fragment_shader_path,
                  const char *geometry_shader_path) {
@@ -52,4 +53,4 @@ Program::Program(std::string &vertex_shader_path,
     : Program::Program(vertex_shader_path.c_str(), fragment_shader_path.c_str(),
                        geometry_shader_path.c_str()) {}
 
-} // namespace WE::Render
+} // namespace WE::Render::Opengl

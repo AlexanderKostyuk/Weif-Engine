@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstdint>
+#include <stdexcept>
 #include <unordered_map>
 
 #include "render/model.h"
@@ -24,9 +25,21 @@ public:
   ModelManager() {}
   MeshId LoadModel(Model model);
   void UnloadModel(MeshId mesh_id);
-  inline GLuint GetVAO(MeshId mesh_id) { return meshes.at(mesh_id).VAO; }
-  inline GLuint GetIndicesAmount(MeshId mesh_id) {
-    return meshes.at(mesh_id).indices_amount;
+  inline GLuint GetVAO(MeshId mesh_id) const {
+    try {
+      return meshes.at(mesh_id).VAO;
+    } catch (std::out_of_range err) {
+      printf("Mesh ID: %i is out of range\n", mesh_id);
+      return 0;
+    }
+  }
+  inline GLuint GetIndicesAmount(MeshId mesh_id) const {
+    try {
+      return meshes.at(mesh_id).indices_amount;
+    } catch (std::out_of_range err) {
+      printf("Mesh ID: %i is out of range\n", mesh_id);
+      return 0;
+    }
   }
 
   std::vector<MeshId> LoadModelsFromFile(const char *file_path);
