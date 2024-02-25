@@ -3,7 +3,10 @@
 layout(triangles) in;
 layout(triangle_strip, max_vertices=18) out;
 
-layout(location = 2) uniform mat4 shadow_matrices[6];
+layout(std140, binding = 3) uniform ShadowMatrices {
+  mat4 shadow_matrices[6];
+};
+layout(location = 8)uniform vec3 light_position;
 
 out vec4 frag_position;
 
@@ -13,7 +16,7 @@ void main() {
     gl_Layer = face;
     for(int i = 0; i < 3; i++){
       frag_position = gl_in[i].gl_Position;
-      gl_Position = shadow_matrices[face] * frag_position;
+      gl_Position = shadow_matrices[face] * (frag_position - vec4(light_position,0.0f));
       EmitVertex();
     }
     EndPrimitive();

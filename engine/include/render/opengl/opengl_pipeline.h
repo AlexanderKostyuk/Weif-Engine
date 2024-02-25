@@ -54,6 +54,7 @@ private:
   GLuint projection_UBO_;
   GLuint directional_light_UBO_;
   GLuint point_light_UBO_;
+  GLuint shadow_map_UBO_;
 };
 
 } // namespace WE::Render::Opengl

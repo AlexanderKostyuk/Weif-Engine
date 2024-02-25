@@ -9,6 +9,7 @@ namespace WE::Render::Opengl {
 inline constexpr GLuint kProjectionUniformBlockIndex = 0;
 inline constexpr GLuint kDirectionalLightUniformBlockIndex = 1;
 inline constexpr GLuint kPointLightsUniformBlockIndex = 2;
+inline constexpr GLuint kShadowMapUniformBlockIndex = 3;
 
 // General pass locations
 inline constexpr GLuint kModelWorldTransformLocation = 1;

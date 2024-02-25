@@ -94,6 +94,39 @@ void OpenglPipeline::GenerateUBOs() {
 
   UniformBufferSubData(projection_UBO_, 0, MAT4_SIZE,
                        glm::value_ptr(perspective_matrix));
+
+  GenerateUBO(shadow_map_UBO_, MAT4_SIZE * 6, kShadowMapUniformBlockIndex);
+
+  glm::mat4 shadow_projection =
+      glm::perspective(glm::radians(90.0f), 1.0f, z_near_, z_far_);
+  std::array<glm::mat4, 6> shadow_transforms;
+  shadow_transforms[0] =
+      shadow_projection * glm::lookAt(glm::vec3(0.0f),
+                                      glm::vec3(1.0f, 0.0f, 0.0f),
+                                      glm::vec3(0.0f, -1.0f, 0.0f));
+  shadow_transforms[1] =
+      shadow_projection * glm::lookAt(glm::vec3(0.0f),
+                                      glm::vec3(-1.0f, 0.0f, 0.0f),
+                                      glm::vec3(0.0f, -1.0f, 0.0f));
+  shadow_transforms[2] =
+      shadow_projection * glm::lookAt(glm::vec3(0.0f),
+                                      glm::vec3(0.0f, 1.0f, 0.0f),
+                                      glm::vec3(0.0f, 0.0f, 1.0f));
+  shadow_transforms[3] =
+      shadow_projection * glm::lookAt(glm::vec3(0.0f),
+                                      glm::vec3(0.0f, -1.0f, 0.0f),
+                                      glm::vec3(0.0f, 0.0f, -1.0f));
+  shadow_transforms[4] =
+      shadow_projection * glm::lookAt(glm::vec3(0.0f),
+                                      glm::vec3(0.0f, 0.0f, 1.0f),
+                                      glm::vec3(0.0f, -1.0f, 0.0f));
+  shadow_transforms[5] =
+      shadow_projection * glm::lookAt(glm::vec3(0.0f),
+                                      glm::vec3(0.0f, 0.0f, -1.0f),
+                                      glm::vec3(0.0f, -1.0f, 0.0f));
+
+  UniformBufferSubData(shadow_map_UBO_, 0, MAT4_SIZE * 6,
+                       glm::value_ptr(shadow_transforms[0]));
 }
 
 void OpenglPipeline::ShadowPass() {
@@ -143,8 +176,6 @@ void OpenglPipeline::GeneratePointLightShadowMaps() {
   shadow_map_program_.UseProgram();
   glUniform1f(kShadowPassFarPlaneLocation, z_far_);
 
-  glm::mat4 shadow_projection =
-      glm::perspective(glm::radians(90.0f), 1.0f, z_near_, z_far_);
   glBindFramebuffer(GL_FRAMEBUFFER, shadow_map_framebuffer_);
   SetViewportSize(shadow_resolution_, shadow_resolution_);
 
@@ -154,35 +185,6 @@ void OpenglPipeline::GeneratePointLightShadowMaps() {
                  glm::value_ptr(point_light.position));
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_map, 0);
     glClear(GL_DEPTH_BUFFER_BIT);
-    std::array<glm::mat4, 6> shadow_transforms;
-    auto position = glm::vec3(point_light.position);
-    shadow_transforms[0] =
-        shadow_projection * glm::lookAt(position,
-                                        position + glm::vec3(1.0f, 0.0f, 0.0f),
-                                        glm::vec3(0.0f, -1.0f, 0.0f));
-    shadow_transforms[1] =
-        shadow_projection * glm::lookAt(position,
-                                        position + glm::vec3(-1.0f, 0.0f, 0.0f),
-                                        glm::vec3(0.0f, -1.0f, 0.0f));
-    shadow_transforms[2] =
-        shadow_projection * glm::lookAt(position,
-                                        position + glm::vec3(0.0f, 1.0f, 0.0f),
-                                        glm::vec3(0.0f, 0.0f, 1.0f));
-    shadow_transforms[3] =
-        shadow_projection * glm::lookAt(position,
-                                        position + glm::vec3(0.0f, -1.0f, 0.0f),
-                                        glm::vec3(0.0f, 0.0f, -1.0f));
-    shadow_transforms[4] =
-        shadow_projection * glm::lookAt(position,
-                                        position + glm::vec3(0.0f, 0.0f, 1.0f),
-                                        glm::vec3(0.0f, -1.0f, 0.0f));
-    shadow_transforms[5] =
-        shadow_projection * glm::lookAt(position,
-                                        position + glm::vec3(0.0f, 0.0f, -1.0f),
-                                        glm::vec3(0.0f, -1.0f, 0.0f));
-
-    glUniformMatrix4fv(kShadowMatricesLocation, 6, GL_FALSE,
-                       glm::value_ptr(shadow_transforms[0]));
 
     for (auto object : objects_) {
       glUniformMatrix4fv(kModelWorldTransformLocation, 1, GL_FALSE,

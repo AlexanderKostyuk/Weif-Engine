@@ -15,6 +15,8 @@ const char *GetShaderTypeName(GLenum shader_type) {
     return "VERTEX";
   case GL_FRAGMENT_SHADER:
     return "FRAGMENT";
+  case GL_COMPUTE_SHADER:
+    return "COMPUTE";
   default:
     return "UNKNOWN";
   }
