@@ -44,9 +44,9 @@ private:
   GLfloat z_near_ = 0.1f;
   GLfloat z_far_ = 100.0f;
 
-  Program base_program_;
-  Program shadow_map_program_;
-  Program shadow_map_directional_program_;
+  Program light_pass_program_;
+  Program point_shadow_pass_program_;
+  Program directional_shadow_pass_program_;
 
   GLuint shadow_map_framebuffer_;
   GLuint color_framebuffer_;

@@ -88,14 +88,13 @@ void InitEntities(WE::Application &application) {
       plane, WE::ECS::Components::MeshRenderer{.mesh_id = kPlaneMesh});
   coordinator.AddComponent(plane, WE::ECS::Components::Material{});
 
-  // auto dir_light = coordinator.CreateEntity();
-  // coordinator.AddComponent(dir_light,
-  //                          WE::ECS::Components::DirectionalLight{
-  //                              .direction = glm::vec3(0.0f, -1.0f, 1.0f),
-  //                              .ambient = glm::vec4(0.05f, 0.05f,
-  //                              0.05f, 1.0f), .diffuse = glm::vec4(0.1f, 0.1f,
-  //                              0.1f, 1.0f), .specular = glm::vec4(0.3f, 0.3f,
-  //                              0.3f, 1.0f)});
+  auto dir_light = coordinator.CreateEntity();
+  coordinator.AddComponent(dir_light,
+                           WE::ECS::Components::DirectionalLight{
+                               .direction = glm::vec3(0.0f, -1.0f, 1.0f),
+                               .ambient = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f),
+                               .diffuse = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
+                               .specular = glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)});
   auto point_light_1 = coordinator.CreateEntity();
   coordinator.AddComponent(point_light_1,
                            WE::ECS::Components::PointLight{

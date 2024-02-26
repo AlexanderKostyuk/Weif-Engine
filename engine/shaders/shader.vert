@@ -22,6 +22,9 @@ layout(location = 2) uniform mat3 model_camera_normal_transform;
 
 //Directional light info
 layout(location = 8) uniform bool directional_light_exists;
+layout(std140, binding = 3) uniform ShadowMatrices {
+  mat4 ortho_projection;
+};
 
 //Point Lights info
 layout(location = 14) uniform int point_lights_amount;
@@ -39,7 +42,7 @@ void main() {
   out_uv = in_uv;
 
   if(directional_light_exists)
-    out_directional_light_space_position = world_directional_light_transform * vec4(out_world_space_position,1.0f);
+    out_directional_light_space_position = ortho_projection * world_directional_light_transform * vec4(out_world_space_position,1.0f);
 
   for(int i = 0 ; i < point_lights_amount; i++)
     out_point_light_space_position[i] = out_world_space_position - point_light_position[i];

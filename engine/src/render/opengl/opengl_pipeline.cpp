@@ -66,12 +66,16 @@ void OpenglPipeline::Init() {
 }
 
 void OpenglPipeline::GeneratePrograms() {
-  base_program_ =
+
+  light_pass_program_ =
       Program("./engine/shaders/shader.vert", "./engine/shaders/gaussian.frag");
-  shadow_map_program_ = Program("./engine/shaders/shadows/point_light.vert",
-                                "./engine/shaders/shadows/point_light.frag",
-                                "./engine/shaders/shadows/point_light.geom");
-  shadow_map_directional_program_ =
+
+  point_shadow_pass_program_ =
+      Program("./engine/shaders/shadows/point_light.vert",
+              "./engine/shaders/shadows/point_light.frag",
+              "./engine/shaders/shadows/point_light.geom");
+
+  directional_shadow_pass_program_ =
       Program("./engine/shaders/shadows/directional_light.vert",
               "./engine/shaders/shadows/directional_light.frag");
 }
@@ -79,12 +83,11 @@ void OpenglPipeline::GeneratePrograms() {
 void OpenglPipeline::GenerateUBOs() {
 
   GenerateUBO(projection_UBO_, MAT4_SIZE * 3, kProjectionUniformBlockIndex);
-
   GenerateUBO(directional_light_UBO_, sizeof(WE::Render::Lighting::LightInfo),
               kDirectionalLightUniformBlockIndex);
-
   GenerateUBO(point_light_UBO_, sizeof(ECS::Components::PointLight) * 8,
               kPointLightsUniformBlockIndex);
+  GenerateUBO(shadow_map_UBO_, MAT4_SIZE * 7, kShadowMapUniformBlockIndex);
 
   auto window_size = GetApplication()->GetWindow().GetWindowSize();
 
@@ -95,7 +98,11 @@ void OpenglPipeline::GenerateUBOs() {
   UniformBufferSubData(projection_UBO_, 0, MAT4_SIZE,
                        glm::value_ptr(perspective_matrix));
 
-  GenerateUBO(shadow_map_UBO_, MAT4_SIZE * 6, kShadowMapUniformBlockIndex);
+  glm::mat4 ortho_projection =
+      glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, -20.0f, 20.0f);
+
+  UniformBufferSubData(shadow_map_UBO_, 0, MAT4_SIZE,
+                       glm::value_ptr(ortho_projection));
 
   glm::mat4 shadow_projection =
       glm::perspective(glm::radians(90.0f), 1.0f, z_near_, z_far_);
@@ -125,7 +132,7 @@ void OpenglPipeline::GenerateUBOs() {
                                       glm::vec3(0.0f, 0.0f, -1.0f),
                                       glm::vec3(0.0f, -1.0f, 0.0f));
 
-  UniformBufferSubData(shadow_map_UBO_, 0, MAT4_SIZE * 6,
+  UniformBufferSubData(shadow_map_UBO_, MAT4_SIZE, MAT4_SIZE * 6,
                        glm::value_ptr(shadow_transforms[0]));
 }
 
@@ -139,22 +146,23 @@ void OpenglPipeline::GenerateDirectionalLightShadowMap() {
   if (!directional_light_.has_value())
     return;
 
-  shadow_map_directional_program_.UseProgram();
+  directional_shadow_pass_program_.UseProgram();
   glBindFramebuffer(GL_FRAMEBUFFER, shadow_map_framebuffer_);
   SetViewportSize(shadow_resolution_, shadow_resolution_);
 
-  glm::mat4 light_projection =
-      glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, -20.0f, 20.0f);
-  glm::mat4 light_view =
-      light_projection * glm::lookAt(glm::vec3(0.0f),
-                                     glm::vec3(directional_light_->direction),
-                                     glm::vec3(0.0f, 1.0f, 0.0f));
+  glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+  glm::vec3 direction = glm::vec3(directional_light_->direction);
+  if (glm::dot(up, glm::normalize(direction)) == 1.0f)
+    up = glm::vec3(-1.0f, 0.0f, 0.0f);
+  glm::mat4 light_view = glm::lookAt(glm::vec3(0.0f), direction, up);
+
   UniformBufferSubData(projection_UBO_, MAT4_SIZE * 2, MAT4_SIZE,
                        glm::value_ptr(light_view));
 
   GLuint shadow_map = GetTexture(directional_light_->shadow_map_texture);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
                          shadow_map, 0);
+
   glClear(GL_DEPTH_BUFFER_BIT);
   for (auto object : objects_) {
     glUniformMatrix4fv(kModelWorldTransformLocation, 1, GL_FALSE,
@@ -165,7 +173,7 @@ void OpenglPipeline::GenerateDirectionalLightShadowMap() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   auto window_size = GetApplication()->GetWindow().GetWindowSize();
   SetViewportSize(window_size.x, window_size.y);
-  shadow_map_directional_program_.FreeProgram();
+  directional_shadow_pass_program_.FreeProgram();
 }
 
 void OpenglPipeline::GeneratePointLightShadowMaps() {
@@ -173,7 +181,7 @@ void OpenglPipeline::GeneratePointLightShadowMaps() {
   if (point_lights_.empty())
     return;
 
-  shadow_map_program_.UseProgram();
+  point_shadow_pass_program_.UseProgram();
   glUniform1f(kShadowPassFarPlaneLocation, z_far_);
 
   glBindFramebuffer(GL_FRAMEBUFFER, shadow_map_framebuffer_);
@@ -196,7 +204,7 @@ void OpenglPipeline::GeneratePointLightShadowMaps() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   auto window_size = GetApplication()->GetWindow().GetWindowSize();
   SetViewportSize(window_size.x, window_size.y);
-  shadow_map_program_.FreeProgram();
+  point_shadow_pass_program_.FreeProgram();
 }
 
 void OpenglPipeline::LightPass() {
@@ -205,7 +213,7 @@ void OpenglPipeline::LightPass() {
   glClearDepth(1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  base_program_.UseProgram();
+  light_pass_program_.UseProgram();
   glUniform1f(kFarPlaneLocation, z_far_);
   auto gaussian_texture_id = GetTextureManager().GetGaussianTermTextureId();
   if (gaussian_texture_id != 0) {
@@ -241,7 +249,7 @@ void OpenglPipeline::LightPass() {
 
     DrawObject(object.mesh_id);
   }
-  base_program_.FreeProgram();
+  light_pass_program_.FreeProgram();
 }
 
 void OpenglPipeline::BindDirectionalLight() {
@@ -250,15 +258,6 @@ void OpenglPipeline::BindDirectionalLight() {
     return;
   }
   glUniform1i(kDirectionalLightExistsLocation, 1);
-
-  glm::mat4 light_projection =
-      glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, -20.0f, 20.0f);
-  glm::mat4 light_view =
-      light_projection * glm::lookAt(glm::vec3(0.0f),
-                                     glm::vec3(directional_light_->direction),
-                                     glm::vec3(0.0f, 1.0f, 0.0f));
-  UniformBufferSubData(projection_UBO_, MAT4_SIZE * 2, MAT4_SIZE,
-                       glm::value_ptr(light_view));
 
   auto camera_rotation = glm::mat3(GetCamera().rotation);
   auto direction = camera_rotation * directional_light_->direction;
