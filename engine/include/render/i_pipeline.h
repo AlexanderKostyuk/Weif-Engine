@@ -3,6 +3,7 @@
 
 #include "GL/glcorearb.h"
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 #include "glm/ext/vector_int2.hpp"
@@ -35,7 +36,13 @@ public:
   inline void SetPointLights(std::vector<Lighting::PointLight> point_lights) {
     point_lights_ = point_lights;
   }
-  inline void SetObjects(std::vector<Object> objects) { objects_ = objects; }
+  inline void SetObjects(const std::vector<Object> &&objects) {
+    objects_ = objects;
+  }
+  inline void SetObjects2D(
+      const std::unordered_map<TextureId, std::vector<glm::mat4>> &&objects) {
+    objects_2d_ = objects;
+  }
   inline void SetApplication(WE::Application *application) {
     application_ = application;
   }
@@ -65,6 +72,7 @@ protected:
   std::optional<Lighting::DirectionalLight> directional_light_;
   std::vector<Lighting::PointLight> point_lights_;
   std::vector<Object> objects_;
+  std::unordered_map<TextureId, std::vector<glm::mat4>> objects_2d_;
 
   ModelManager model_manager_;
   TextureManager texture_manager_;

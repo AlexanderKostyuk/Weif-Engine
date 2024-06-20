@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <render/opengl/program.h>
 
 #include <GL/gl3w.h>
@@ -22,6 +23,7 @@ Program::Program(const char *vertex_shader_path,
   glLinkProgram(gl_program_);
   glDetachShader(gl_program_, vertex_shader.GetShaderRef());
   glDetachShader(gl_program_, fragment_shader.GetShaderRef());
+  std::printf("Program with ID:%d created.\n", gl_program_);
 }
 
 Program::Program(const char *vertex_shader_path,

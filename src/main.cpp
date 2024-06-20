@@ -1,3 +1,5 @@
+#include "ECS/components/sprite_2d.h"
+#include "render/texture_manager.h"
 #define GLFW_DLL
 #define _USE_MATH_DEFINES
 #include <glm/fwd.hpp>
@@ -21,7 +23,14 @@ WE::Render::MeshId kCubeMesh;
 WE::Render::MeshId kSphereMesh;
 WE::Render::MeshId kPlaneMesh;
 
-void InitTextures() {}
+WE::Render::TextureId sprite;
+
+void InitTextures() {
+  auto &texture_manager = pipeline.GetTextureManager();
+  sprite = texture_manager.LoadTexture(
+      WE::Render::TextureRGBA{{{255, 0, 0, 255}, {0, 255, 0, 255}},
+                              {{0, 0, 255, 255}, {255, 0, 0, 255}}});
+}
 
 void InitModels() {
   auto &model_manager = pipeline.GetModelManager();
@@ -127,6 +136,10 @@ void InitEntities(WE::Application &application) {
                                .current_time = 1.5f * M_PI,
                                .start_position = glm::vec3(0.0f, 0.0f, -5.0f),
                                .speed = 1.5f});
+
+  auto sprite_2d = coordinator.CreateEntity();
+  coordinator.AddComponent(sprite_2d, WE::ECS::Components::Transform{});
+  coordinator.AddComponent(sprite_2d, WE::ECS::Components::Sprite2D{sprite});
 
   printf("Demo entities initialized\n");
 }

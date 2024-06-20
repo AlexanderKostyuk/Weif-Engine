@@ -4,12 +4,14 @@
 #include "ECS/components/material.h"
 #include "ECS/components/mesh_renderer.h"
 #include "ECS/components/point_light.h"
+#include "ECS/components/sprite_2d.h"
 #include "ECS/components/transform.h"
 #include "ECS/coordinator.h"
 #include "application.h"
 #include "glm/ext/matrix_transform.hpp"
 #include "render/i_pipeline.h"
 #include "render/lighting/point_light.h"
+#include "render/texture_manager.h"
 
 namespace WE::Render {
 
@@ -93,8 +95,30 @@ void RenderSystem::Update(float delta_time) {
                  .specular_texture_id = material.specular_texture_id,
                  .mesh_id = mesh_renderer.mesh_id});
     }
-    pipeline.SetObjects(objects);
+    pipeline.SetObjects(std::move(objects));
   }
+
+  {
+    auto objects_2d_entities =
+        coordinator.GetEntities<WE::ECS::Components::Transform,
+                                WE::ECS::Components::Sprite2D>();
+    std::unordered_map<TextureId, std::vector<glm::mat4>> packed_objects;
+    for (auto entity : objects_2d_entities) {
+      auto &transform =
+          coordinator.GetComponent<WE::ECS::Components::Transform>(entity);
+      auto &sprite_2d =
+          coordinator.GetComponent<WE::ECS::Components::Sprite2D>(entity);
+
+      glm::mat4 transform_matrix =
+          glm::translate(glm::mat4(1.0f), transform.position) *
+          glm::mat4(transform.rotation) *
+          glm::scale(glm::mat4(1.0f), transform.scale);
+
+      packed_objects[sprite_2d.sprite_id].push_back(transform_matrix);
+    }
+    pipeline.SetObjects2D(std::move(packed_objects));
+  }
+
   pipeline.Draw();
 }
 

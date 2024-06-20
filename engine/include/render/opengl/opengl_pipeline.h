@@ -4,6 +4,10 @@
 #include "render/i_pipeline.h"
 #include "render/model_manager.h"
 #include "render/opengl/program.h"
+#include "render/opengl/renderer_2d.h"
+#include "render/texture_manager.h"
+#include <memory>
+
 namespace WE::Render::Opengl {
 
 class OpenglPipeline : public IPipeline {
@@ -43,6 +47,8 @@ private:
   GLfloat fov_ = 45.0f;
   GLfloat z_near_ = 0.1f;
   GLfloat z_far_ = 100.0f;
+
+  std::unique_ptr<Renderer2D> renderer_2d_;
 
   Program light_pass_program_;
   Program point_shadow_pass_program_;

@@ -103,6 +103,7 @@ GLuint CreateTextureFromVector(const WE::Render::TextureRGBA &texture_data) {
   glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, texture_data[0].size(),
                texture_data.size(), 0, GL_RGBA, GL_UNSIGNED_BYTE,
                &texture_data[0][0].at(0));
+  glGenerateMipmap(GL_TEXTURE_2D);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   return texture;

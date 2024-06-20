@@ -1,6 +1,7 @@
 #include "application.h"
 #include "ECS/components/directional_light.h"
 #include "ECS/components/point_light.h"
+#include "ECS/components/sprite_2d.h"
 #include "application_window.h"
 #include "render/i_pipeline.h"
 #include <chrono>
@@ -57,6 +58,7 @@ void Application::InitComponents() {
   coordinator_.RegisterComponent<ECS::Components::Material>();
   coordinator_.RegisterComponent<ECS::Components::DirectionalLight>();
   coordinator_.RegisterComponent<ECS::Components::PointLight>();
+  coordinator_.RegisterComponent<ECS::Components::Sprite2D>();
   printf("Components intialized\n");
 }
 

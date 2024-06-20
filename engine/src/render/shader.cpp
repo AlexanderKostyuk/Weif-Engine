@@ -39,6 +39,9 @@ void HandleErrors(GLuint shader, GLenum shader_type) {
 namespace WE::Render {
 Shader::Shader(const char *path, GLenum shader_type) {
 
+  printf("Building shader \"%s\", of type %s\n", path,
+         GetShaderTypeName(shader_type));
+
   std::string shader_src = Utils::ReadFile(path);
   const char *shader_src_c_str = shader_src.c_str();
 
@@ -48,6 +51,7 @@ Shader::Shader(const char *path, GLenum shader_type) {
   glCompileShader(shader_reference);
 
   HandleErrors(shader_reference, shader_type);
+  printf("Shader builded\n");
 }
 
 Shader::~Shader() { glDeleteShader(shader_reference); };

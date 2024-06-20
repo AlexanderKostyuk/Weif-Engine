@@ -19,6 +19,7 @@
 #include "render/lighting/point_light.h"
 #include "render/opengl/global_varibales.h"
 #include "render/opengl/program.h"
+#include "render/opengl/renderer_2d.h"
 
 namespace {
 
@@ -39,6 +40,17 @@ void UniformBufferSubData(const GLuint UBO, const std::size_t offset,
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
+void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id,
+                                GLenum severity, GLsizei length,
+                                const GLchar *message, const void *userParam) {
+  if (severity <= GL_DEBUG_SEVERITY_LOW)
+    return;
+  fprintf(stderr,
+          "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+          (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, severity,
+          message);
+}
+
 } // namespace
 
 namespace WE::Render::Opengl {
@@ -53,6 +65,8 @@ void OpenglPipeline::Init() {
   glDepthMask(GL_TRUE);
   glDepthFunc(GL_LEQUAL);
   glDepthRange(0.0f, 1.0f);
+  glEnable(GL_DEBUG_OUTPUT);
+  glDebugMessageCallback(MessageCallback, 0);
 
   glGenFramebuffers(1, &shadow_map_framebuffer_);
   glBindFramebuffer(GL_FRAMEBUFFER, shadow_map_framebuffer_);
@@ -61,6 +75,7 @@ void OpenglPipeline::Init() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   texture_manager_.Init();
+  renderer_2d_ = std::make_unique<Renderer2D>();
   GenerateUBOs();
   GeneratePrograms();
 }
@@ -250,6 +265,10 @@ void OpenglPipeline::LightPass() {
     DrawObject(object.mesh_id);
   }
   light_pass_program_.FreeProgram();
+
+  for (auto pack : objects_2d_) {
+    renderer_2d_->RenderSprites(pack.second, GetTexture(pack.first));
+  }
 }
 
 void OpenglPipeline::BindDirectionalLight() {
