@@ -33,7 +33,8 @@ Renderer2D::Renderer2D() {
   // Bind transform buffer to attrib arrays (max pointer size 4, for matrix bind
   // we use 4 pointers with size 4)
   glBindBuffer(GL_ARRAY_BUFFER, transforms_buffer_);
-  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)0);
+  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
+                        (void *)(0 * sizeof(glm::vec4)));
   glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
                         (void *)(1 * sizeof(glm::vec4)));
   glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),

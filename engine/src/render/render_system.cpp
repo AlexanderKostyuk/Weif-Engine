@@ -76,8 +76,9 @@ void RenderSystem::Update(float delta_time) {
         coordinator.GetEntities<WE::ECS::Components::Material,
                                 WE::ECS::Components::Transform,
                                 WE::ECS::Components::MeshRenderer>();
-    std::vector<Object> objects{};
-    objects.reserve(object_entities.size());
+
+    std::unordered_map<Object, std::vector<glm::mat4>> packed_objects;
+
     for (auto entity : object_entities) {
       auto &transform =
           coordinator.GetComponent<WE::ECS::Components::Transform>(entity);
@@ -89,13 +90,13 @@ void RenderSystem::Update(float delta_time) {
           glm::translate(glm::mat4(1.0f), transform.position) *
           glm::mat4(transform.rotation) *
           glm::scale(glm::mat4(1.0f), transform.scale);
-      objects.emplace_back(
-          Object{.transform = transform_matrix,
-                 .diffuse_texture_id = material.diffuse_texture_id,
-                 .specular_texture_id = material.specular_texture_id,
-                 .mesh_id = mesh_renderer.mesh_id});
+
+      Object object{.diffuse_texture_id = material.diffuse_texture_id,
+                    .specular_texture_id = material.specular_texture_id,
+                    .mesh_id = mesh_renderer.mesh_id};
+      packed_objects[object].push_back(transform_matrix);
     }
-    pipeline.SetObjects(std::move(objects));
+    pipeline.SetObjects3D(std::move(packed_objects));
   }
 
   {

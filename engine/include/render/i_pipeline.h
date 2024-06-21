@@ -36,8 +36,9 @@ public:
   inline void SetPointLights(std::vector<Lighting::PointLight> point_lights) {
     point_lights_ = point_lights;
   }
-  inline void SetObjects(const std::vector<Object> &&objects) {
-    objects_ = objects;
+  inline void SetObjects3D(
+      const std::unordered_map<Object, std::vector<glm::mat4>> &&objects) {
+    objects_3d_ = objects;
   }
   inline void SetObjects2D(
       const std::unordered_map<TextureId, std::vector<glm::mat4>> &&objects) {
@@ -71,7 +72,7 @@ protected:
 protected:
   std::optional<Lighting::DirectionalLight> directional_light_;
   std::vector<Lighting::PointLight> point_lights_;
-  std::vector<Object> objects_;
+  std::unordered_map<Object, std::vector<glm::mat4>> objects_3d_;
   std::unordered_map<TextureId, std::vector<glm::mat4>> objects_2d_;
 
   ModelManager model_manager_;

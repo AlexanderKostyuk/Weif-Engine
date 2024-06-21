@@ -5,6 +5,7 @@
 #include "render/model_manager.h"
 #include "render/opengl/program.h"
 #include "render/opengl/renderer_2d.h"
+#include "render/opengl/renderer_3d.h"
 #include "render/texture_manager.h"
 #include <memory>
 
@@ -49,6 +50,7 @@ private:
   GLfloat z_far_ = 100.0f;
 
   std::unique_ptr<Renderer2D> renderer_2d_;
+  std::unique_ptr<Renderer3D> renderer_3d_;
 
   Program light_pass_program_;
   Program point_shadow_pass_program_;
