@@ -43,6 +43,7 @@ Program::Program(const char *vertex_shader_path,
   glDetachShader(gl_program_, vertex_shader.GetShaderRef());
   glDetachShader(gl_program_, fragment_shader.GetShaderRef());
   glDetachShader(gl_program_, geometry_shader.GetShaderRef());
+  std::printf("Program with ID:%d created.\n", gl_program_);
 }
 
 Program::Program(std::string &vertex_shader_path,

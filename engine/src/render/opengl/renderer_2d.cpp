@@ -7,6 +7,7 @@
 namespace WE::Render::Opengl {
 
 Renderer2D::Renderer2D() {
+
   default_program_ =
       Program("./engine/shaders/2d.vert", "./engine/shaders/2d.frag");
 
@@ -20,7 +21,7 @@ Renderer2D::Renderer2D() {
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
   glEnableVertexAttribArray(2);
-  glEnableVertexAttribArray(2);
+  glEnableVertexAttribArray(3);
   glEnableVertexAttribArray(4);
 
   // Bind vertices coordinates to 0 attrib array
@@ -29,27 +30,25 @@ Renderer2D::Renderer2D() {
                GL_STATIC_DRAW);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, (void *)0);
 
-  // Bind positions buffer to 1 attrib array,
-  // and add division for instancing(stride only on instance change)
+  // Bind transform buffer to attrib arrays (max pointer size 4, for matrix bind
+  // we use 4 pointers with size 4)
   glBindBuffer(GL_ARRAY_BUFFER, transforms_buffer_);
-  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)0);
+  glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
+                        (void *)(0 * sizeof(glm::vec4)));
   glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
                         (void *)(1 * sizeof(glm::vec4)));
   glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
                         (void *)(2 * sizeof(glm::vec4)));
   glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
                         (void *)(3 * sizeof(glm::vec4)));
+  // and add division for instancing(stride only on instance change)
   glVertexAttribDivisor(1, 1);
   glVertexAttribDivisor(2, 1);
   glVertexAttribDivisor(3, 1);
   glVertexAttribDivisor(4, 1);
+
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
-}
-
-void Renderer2D::RenderSprite(const glm::mat4 &transform, const GLuint sprite) {
-
-  RenderSprites({transform}, sprite);
 }
 
 void Renderer2D::RenderSprites(const std::vector<glm::mat4> &transforms,

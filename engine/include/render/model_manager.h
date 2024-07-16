@@ -13,7 +13,15 @@ namespace WE::Render {
 using MeshId = std::uint16_t;
 
 struct Mesh {
+
+  Mesh();
+  ~Mesh();
+
+  // 1 - vertex position
+  // 2 - vertex normal
+  // 3 - uv coordinates
   std::array<GLuint, 3> VBO{};
+  GLuint transform_buffer;
   GLuint EBO;
   GLuint VAO;
   GLuint indices_amount;
@@ -23,8 +31,10 @@ class ModelManager {
 
 public:
   ModelManager() {}
+
   MeshId LoadModel(Model model);
-  void UnloadModel(MeshId mesh_id);
+  inline void UnloadModel(MeshId mesh_id) { meshes.erase(mesh_id); }
+
   inline GLuint GetVAO(MeshId mesh_id) const {
     try {
       return meshes.at(mesh_id).VAO;
@@ -33,6 +43,16 @@ public:
       return 0;
     }
   }
+
+  inline GLuint GetTransfromBuffer(MeshId mesh_id) const {
+    try {
+      return meshes.at(mesh_id).transform_buffer;
+    } catch (std::out_of_range err) {
+      printf("Mesh ID: %i is out of range\n", mesh_id);
+      return 0;
+    }
+  }
+
   inline GLuint GetIndicesAmount(MeshId mesh_id) const {
     try {
       return meshes.at(mesh_id).indices_amount;

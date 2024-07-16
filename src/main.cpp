@@ -72,59 +72,61 @@ void InitComponents(WE::Application &application) {
 void InitEntities(WE::Application &application) {
   printf("Demo entities initialization...\n");
   auto &coordinator = application.GetCoordinator();
-  auto cube = coordinator.CreateEntity();
-  coordinator.AddComponent(cube, WE::ECS::Components::Transform{
-                                     .position = glm::vec3(3.0f, 0.0f, -5.0f)});
-  coordinator.AddComponent(
-      cube, WE::ECS::Components::MeshRenderer{.mesh_id = kCubeMesh});
-  coordinator.AddComponent(cube, WE::ECS::Components::Material{});
 
-  auto smooth_cube = coordinator.CreateEntity();
-  coordinator.AddComponent(smooth_cube,
-                           WE::ECS::Components::Transform{
-                               .position = glm::vec3(-3.0f, 0.0f, -5.0f)});
-  coordinator.AddComponent(
-      smooth_cube, WE::ECS::Components::MeshRenderer{.mesh_id = kSphereMesh});
-  coordinator.AddComponent(smooth_cube, WE::ECS::Components::Material{});
+  for (int i = 0; i < 10000; i++) {
+    auto cube = coordinator.CreateEntity();
+    int x = i % 100;
+    int y = i / 100;
+    coordinator.AddComponent(
+        cube, WE::ECS::Components::Transform{
+                  .position = glm::vec3(-50.0f + (x), 0.0f, -50.0f + (y)),
+                  .scale = glm::vec3(0.25f, 0.25f, 0.25f)});
+    coordinator.AddComponent(
+        cube, WE::ECS::Components::MeshRenderer{.mesh_id = kCubeMesh});
+    coordinator.AddComponent(cube, WE::ECS::Components::Material{});
+  }
 
   auto plane = coordinator.CreateEntity();
   coordinator.AddComponent(plane,
                            WE::ECS::Components::Transform{
                                .position = glm::vec3(0.0f, -1.0f, -5.0f),
-                               .scale = glm::vec3(20.0f, 20.0f, 1.0f),
+                               .scale = glm::vec3(200.0f, 200.0f, 1.0f),
                                .rotation = glm::vec3(-1.556f, 0.0f, 0.0f)});
   coordinator.AddComponent(
       plane, WE::ECS::Components::MeshRenderer{.mesh_id = kPlaneMesh});
   coordinator.AddComponent(plane, WE::ECS::Components::Material{});
 
-  auto dir_light = coordinator.CreateEntity();
-  coordinator.AddComponent(dir_light,
-                           WE::ECS::Components::DirectionalLight{
-                               .direction = glm::vec3(0.0f, -1.0f, 1.0f),
-                               .ambient = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f),
-                               .diffuse = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
-                               .specular = glm::vec4(0.3f, 0.3f, 0.3f, 1.0f)});
-  auto point_light_1 = coordinator.CreateEntity();
-  coordinator.AddComponent(point_light_1,
-                           WE::ECS::Components::PointLight{
-                               .ambient = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f),
-                               .diffuse = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
-                               .specular = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f)});
-  coordinator.AddComponent(
-      point_light_1,
-      Demo::Components::TravelingLight{
-          .start_position = glm::vec3(0.0f, 0.0f, -5.0f), .speed = 0.0f});
-  auto point_light_2 = coordinator.CreateEntity();
-  coordinator.AddComponent(point_light_2,
-                           WE::ECS::Components::PointLight{
-                               .ambient = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f),
-                               .diffuse = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
-                               .specular = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f)});
-  coordinator.AddComponent(point_light_2,
-                           Demo::Components::TravelingLight{
-                               .current_time = 0.5f * M_PI,
-                               .start_position = glm::vec3(0.0f, 0.0f, -5.0f),
-                               .speed = 0.5f});
+  // auto dir_light = coordinator.CreateEntity();
+  // coordinator.AddComponent(dir_light,
+  //                          WE::ECS::Components::DirectionalLight{
+  //                              .direction = glm::vec3(0.0f, -1.0f, 1.0f),
+  //                              .ambient = glm::vec4(0.05f, 0.05f,
+  //                              0.05f, 1.0f), .diffuse = glm::vec4(0.1f, 0.1f,
+  //                              0.1f, 1.0f), .specular = glm::vec4(0.3f, 0.3f,
+  //                              0.3f, 1.0f)});
+  // auto point_light_1 = coordinator.CreateEntity();
+  // coordinator.AddComponent(point_light_1,
+  //                          WE::ECS::Components::PointLight{
+  //                              .ambient = glm::vec4(0.05f, 0.05f,
+  //                              0.05f, 1.0f), .diffuse = glm::vec4(0.1f, 0.1f,
+  //                              0.1f, 1.0f), .specular = glm::vec4(0.1f, 0.1f,
+  //                              0.1f, 1.0f)});
+  // coordinator.AddComponent(
+  //     point_light_1,
+  //     Demo::Components::TravelingLight{
+  //         .start_position = glm::vec3(0.0f, 3.0f, -5.0f), .speed = 0.0f});
+  // auto point_light_2 = coordinator.CreateEntity();
+  // coordinator.AddComponent(point_light_2,
+  //                          WE::ECS::Components::PointLight{
+  //                              .ambient = glm::vec4(0.05f, 0.05f,
+  //                              0.05f, 1.0f), .diffuse = glm::vec4(0.1f, 0.1f,
+  //                              0.1f, 1.0f), .specular = glm::vec4(0.1f, 0.1f,
+  //                              0.1f, 1.0f)});
+  // coordinator.AddComponent(point_light_2,
+  //                          Demo::Components::TravelingLight{
+  //                              .current_time = 0.5f * M_PI,
+  //                              .start_position = glm::vec3(0.0f, 3.0f,
+  //                              -5.0f), .speed = 0.5f});
   auto point_light_3 = coordinator.CreateEntity();
   coordinator.AddComponent(point_light_3,
                            WE::ECS::Components::PointLight{
@@ -134,8 +136,8 @@ void InitEntities(WE::Application &application) {
   coordinator.AddComponent(point_light_3,
                            Demo::Components::TravelingLight{
                                .current_time = 1.5f * M_PI,
-                               .start_position = glm::vec3(0.0f, 0.0f, -5.0f),
-                               .speed = 1.5f});
+                               .start_position = glm::vec3(0.0f, 3.0f, -5.0f),
+                               .speed = 1.0f});
 
   auto sprite_2d = coordinator.CreateEntity();
   coordinator.AddComponent(sprite_2d, WE::ECS::Components::Transform{});

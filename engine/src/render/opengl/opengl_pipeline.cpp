@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <gl/gl.h>
+#include <memory>
 
 #include "ECS/components/point_light.h"
 #include "application.h"
@@ -43,7 +44,7 @@ void UniformBufferSubData(const GLuint UBO, const std::size_t offset,
 void GLAPIENTRY MessageCallback(GLenum source, GLenum type, GLuint id,
                                 GLenum severity, GLsizei length,
                                 const GLchar *message, const void *userParam) {
-  if (severity <= GL_DEBUG_SEVERITY_LOW)
+  if (severity <= GL_DEBUG_SEVERITY_NOTIFICATION)
     return;
   fprintf(stderr,
           "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
@@ -76,12 +77,20 @@ void OpenglPipeline::Init() {
 
   texture_manager_.Init();
   renderer_2d_ = std::make_unique<Renderer2D>();
+  renderer_3d_ = std::make_unique<Renderer3D>();
   GenerateUBOs();
   GeneratePrograms();
 }
 
 void OpenglPipeline::GeneratePrograms() {
 
+  glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
+  glEnableVertexAttribArray(2);
+  glEnableVertexAttribArray(3);
+  glEnableVertexAttribArray(4);
+  glEnableVertexAttribArray(5);
+  glEnableVertexAttribArray(6);
   light_pass_program_ =
       Program("./engine/shaders/shader.vert", "./engine/shaders/gaussian.frag");
 
@@ -179,10 +188,26 @@ void OpenglPipeline::GenerateDirectionalLightShadowMap() {
                          shadow_map, 0);
 
   glClear(GL_DEPTH_BUFFER_BIT);
-  for (auto object : objects_) {
-    glUniformMatrix4fv(kModelWorldTransformLocation, 1, GL_FALSE,
-                       glm::value_ptr(object.transform));
-    DrawObject(object.mesh_id);
+
+  for (auto object : objects_3d_) {
+
+    ModelInfo model_info{
+        .vao = GetModelManager().GetVAO(object.first.mesh_id),
+        .transform_buffer =
+            GetModelManager().GetTransfromBuffer(object.first.mesh_id),
+        .elements_amount =
+            GetModelManager().GetIndicesAmount(object.first.mesh_id)};
+    model_info.diffuse_texture =
+        object.first.diffuse_texture_id == 0
+            ? GetTextureManager().GetTexture(
+                  GetTextureManager().GetDefaultDiffuseTextureId())
+            : GetTextureManager().GetTexture(object.first.diffuse_texture_id);
+    model_info.specular_texture =
+        object.first.specular_texture_id == 0
+            ? GetTextureManager().GetTexture(
+                  GetTextureManager().GetDefaultSpecularTextureId())
+            : GetTextureManager().GetTexture(object.first.specular_texture_id);
+    renderer_3d_->RenderObjects(object.second, model_info);
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -209,10 +234,26 @@ void OpenglPipeline::GeneratePointLightShadowMaps() {
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_map, 0);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    for (auto object : objects_) {
-      glUniformMatrix4fv(kModelWorldTransformLocation, 1, GL_FALSE,
-                         glm::value_ptr(object.transform));
-      DrawObject(object.mesh_id);
+    for (auto object : objects_3d_) {
+
+      ModelInfo model_info{
+          .vao = GetModelManager().GetVAO(object.first.mesh_id),
+          .transform_buffer =
+              GetModelManager().GetTransfromBuffer(object.first.mesh_id),
+          .elements_amount =
+              GetModelManager().GetIndicesAmount(object.first.mesh_id)};
+      model_info.diffuse_texture =
+          object.first.diffuse_texture_id == 0
+              ? GetTextureManager().GetTexture(
+                    GetTextureManager().GetDefaultDiffuseTextureId())
+              : GetTextureManager().GetTexture(object.first.diffuse_texture_id);
+      model_info.specular_texture =
+          object.first.specular_texture_id == 0
+              ? GetTextureManager().GetTexture(
+                    GetTextureManager().GetDefaultSpecularTextureId())
+              : GetTextureManager().GetTexture(
+                    object.first.specular_texture_id);
+      renderer_3d_->RenderObjects(object.second, model_info);
     }
   }
 
@@ -240,29 +281,25 @@ void OpenglPipeline::LightPass() {
   auto camera_transform = GetCameraMatrix();
   UniformBufferSubData(projection_UBO_, MAT4_SIZE, MAT4_SIZE,
                        glm::value_ptr(camera_transform));
-  for (auto object : objects_) {
-    glUniformMatrix4fv(kModelWorldTransformLocation, 1, GL_FALSE,
-                       glm::value_ptr(object.transform));
-    auto camera_normal_transform = glm::transpose(
-        glm::inverse(glm::mat3(camera_transform * object.transform)));
-    glUniformMatrix3fv(kModelCameraNormalTransformLocation, 1, GL_FALSE,
-                       glm::value_ptr(camera_normal_transform));
+  for (auto object : objects_3d_) {
 
-    if (object.diffuse_texture_id == 0)
-      object.diffuse_texture_id =
-          GetTextureManager().GetDefaultDiffuseTextureId();
-    if (object.specular_texture_id == 0)
-      object.specular_texture_id =
-          GetTextureManager().GetDefaultSpecularTextureId();
-
-    auto diffuse_texture = GetTexture(object.diffuse_texture_id);
-    glActiveTexture(kDiffuseTextureBinding);
-    glBindTexture(GL_TEXTURE_2D, diffuse_texture);
-    auto specular_texture = GetTexture(object.specular_texture_id);
-    glActiveTexture(kSpecularTextureBinding);
-    glBindTexture(GL_TEXTURE_2D, specular_texture);
-
-    DrawObject(object.mesh_id);
+    ModelInfo model_info{
+        .vao = GetModelManager().GetVAO(object.first.mesh_id),
+        .transform_buffer =
+            GetModelManager().GetTransfromBuffer(object.first.mesh_id),
+        .elements_amount =
+            GetModelManager().GetIndicesAmount(object.first.mesh_id)};
+    model_info.diffuse_texture =
+        object.first.diffuse_texture_id == 0
+            ? GetTextureManager().GetTexture(
+                  GetTextureManager().GetDefaultDiffuseTextureId())
+            : GetTextureManager().GetTexture(object.first.diffuse_texture_id);
+    model_info.specular_texture =
+        object.first.specular_texture_id == 0
+            ? GetTextureManager().GetTexture(
+                  GetTextureManager().GetDefaultSpecularTextureId())
+            : GetTextureManager().GetTexture(object.first.specular_texture_id);
+    renderer_3d_->RenderObjects(object.second, model_info);
   }
   light_pass_program_.FreeProgram();
 

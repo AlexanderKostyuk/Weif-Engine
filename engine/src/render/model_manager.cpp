@@ -1,6 +1,7 @@
 #include "render/model_manager.h"
 
 #include "assimp/vector3.h"
+#include "glm/ext/matrix_float4x4.hpp"
 #include "render/model.h"
 #include "stdio.h"
 #include <GL/gl3w.h>
@@ -16,16 +17,6 @@
 #include <queue>
 
 namespace {
-void GenBuffers(WE::Render::Mesh &mesh) {
-  glGenBuffers(mesh.VBO.size(), mesh.VBO.data());
-  glGenBuffers(1, &mesh.EBO);
-  glGenVertexArrays(1, &mesh.VAO);
-}
-void DeleteBuffers(WE::Render::Mesh &mesh) {
-  glDeleteBuffers(mesh.VBO.size(), mesh.VBO.data());
-  glDeleteBuffers(1, &mesh.EBO);
-  glDeleteVertexArrays(1, &mesh.VAO);
-}
 
 glm::vec3 AiVector3DToGLMVec3(const aiVector3D &vector) {
   return glm::vec3(vector.x, vector.y, vector.z);
@@ -62,29 +53,70 @@ WE::Render::Model GenerateModelFromAiMesh(const aiMesh *mesh) {
 
 namespace WE::Render {
 
+Mesh::Mesh() {
+  glGenBuffers(VBO.size(), VBO.data());
+  glGenBuffers(1, &transform_buffer);
+  glGenBuffers(1, &EBO);
+  glGenVertexArrays(1, &VAO);
+}
+
+Mesh::~Mesh() {
+  glDeleteBuffers(VBO.size(), VBO.data());
+  glDeleteBuffers(1, &transform_buffer);
+  glDeleteBuffers(1, &EBO);
+  glDeleteVertexArrays(1, &VAO);
+}
+
 MeshId ModelManager::LoadModel(Model model) {
   MeshId current_id = next_id;
   next_id++;
-  Mesh mesh;
-  GenBuffers(mesh);
+
+  Mesh &mesh = meshes[current_id];
+
   mesh.indices_amount = model.indices.size() * 3;
   glBindVertexArray(mesh.VAO);
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
   glEnableVertexAttribArray(2);
+  glEnableVertexAttribArray(3);
+  glEnableVertexAttribArray(4);
+  glEnableVertexAttribArray(5);
+  glEnableVertexAttribArray(6);
 
+  // Vertex positions
   glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO[0]);
   glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * model.vertices.size(),
                &model.vertices[0].x, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
+
+  // Normals
   glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO[1]);
   glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * model.normals.size(),
                &model.normals[0].x, GL_STATIC_DRAW);
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
+
+  // UV
   glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO[2]);
   glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * model.uv.size(),
                &model.uv[0].x, GL_STATIC_DRAW);
   glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void *)0);
+
+  // Transform matrices
+  glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO[3]);
+  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
+                        (void *)(0 * sizeof(glm::vec4)));
+  glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
+                        (void *)(1 * sizeof(glm::vec4)));
+  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
+                        (void *)(2 * sizeof(glm::vec4)));
+  glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4),
+                        (void *)(3 * sizeof(glm::vec4)));
+  glVertexAttribDivisor(3, 1);
+  glVertexAttribDivisor(4, 1);
+  glVertexAttribDivisor(5, 1);
+  glVertexAttribDivisor(6, 1);
+
+  // Elements
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                sizeof(glm::uvec3) * model.indices.size(), &model.indices[0].x,
@@ -92,7 +124,6 @@ MeshId ModelManager::LoadModel(Model model) {
 
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
-  meshes.insert({current_id, mesh});
   printf("Generated model mesh for ID: %d, VAO ID: %d\n", current_id, mesh.VAO);
   printf("Meshes amount: %zu\n", meshes.size());
   return current_id;
@@ -130,11 +161,6 @@ std::vector<MeshId> ModelManager::LoadModelsFromFile(const char *file_path) {
   return mesh_ids;
 }
 
-void ModelManager::UnloadModel(MeshId mesh_id) {
-  DeleteBuffers(meshes[mesh_id]);
-  meshes.erase(mesh_id);
-}
-
 Model ModelManager::GenerateModelFlatShading(std::vector<glm::vec3> &vertices,
                                              std::vector<glm::vec2> &uv,
                                              std::vector<glm::uvec3> &indices) {
@@ -169,6 +195,7 @@ Model ModelManager::GenerateModelFlatShading(std::vector<glm::vec3> &vertices,
                .uv = new_uv,
                .indices = new_indices};
 }
+
 Model ModelManager::GenerateModelSmoothShading(
     std::vector<glm::vec3> &vertices, std::vector<glm::vec2> &uv,
     std::vector<glm::uvec3> &indices) {

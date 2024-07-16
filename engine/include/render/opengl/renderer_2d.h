@@ -12,7 +12,9 @@ class Renderer2D {
 
 public:
   Renderer2D();
-  void RenderSprite(const glm::mat4 &transform, const GLuint sprite);
+  inline void RenderSprite(const glm::mat4 &transform, const GLuint sprite) {
+    RenderSprites({transform}, sprite);
+  }
   void RenderSprites(const std::vector<glm::mat4> &transforms,
                      const GLuint sprite);
 
